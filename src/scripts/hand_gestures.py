@@ -19,7 +19,9 @@ default_model_path = 'gesture_recognizer.task'
 
 # Gesture recognizer class
 class Mediapipe_GestureRecognizer():
+    
     def __init__(self, model_path = default_model_path):
+        
         self.logger = logging.getLogger()
         self.logger.info("Creating Mediapipe_GestureRecognizer instance")
         
@@ -30,17 +32,20 @@ class Mediapipe_GestureRecognizer():
         options = GestureRecognizerOptions(
             base_options=BaseOptions(model_asset_path=model_path),
             running_mode=VisionRunningMode.LIVE_STREAM,
-            result_callback=self.print_result,  
+            result_callback=self.save_result_callback,  
             num_hands=2)
         
         self.recognizer = GestureRecognizer.create_from_options(options)
         
-    def print_result(self, results:GestureRecognizerResult, output_image:mp.Image, timestamp_ms:int):
+    def save_result_callback(self, results:GestureRecognizerResult, output_image:mp.Image, timestamp_ms:int):
         
         # Save the result in a variable, so it can be processed by other functions
         self.results = results
         
     def draw_results(self, frame):
+        
+        if self.results is None:
+            return frame
         
         # results is an object with all the data of the hands
         # results.hand_landmarks is a list of sets of landmark. One set per hand detected
@@ -58,55 +63,51 @@ class Mediapipe_GestureRecognizer():
             
         return frame
     
-    def main(self):
+    def detect_hands_async(self, frame, timestamp):
         
-        # Initialize the camera feed
-        cam = cv2.VideoCapture(0)
-        # Check that camera is actually open
-        if not cam.isOpened():
-            self.logger.fatal("Cannot open camera")
-            exit()
-        self.logger.debug("Camera opened correctly")
-            
-        # Get width and height of the captured frames
-        frame_width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.logger.debug(f"Frame size: [{frame_width}, {frame_height}]")
+        if frame is None:
+            self.logger.warning("Empty frame received")
+            return
         
-        # Loop for processing frames
-        timestamp = 0
-        while cam.isOpened():
-            timestamp += 1
-            
-            # Capture frame
-            ret, frame = cam.read()
-            if not ret:
-                self.logger.warning("Skipping empty frame")
-                continue
-            
-            # Convert frame to mp.Image
-            image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-            
-            # Detect hands and call the callback function
-            self.recognizer.recognize_async(image, timestamp)
-            
-            # Process the results
-            if self.results is not None:
-                
-                # Draw on the frame
-                frame = self.draw_results(frame)
-            
-            # Display frame
-            cv2.imshow("Live feed", frame)            
-            if cv2.waitKey(5) & 0xFF == ord('q'):
-                print("Closing Camera Stream")
-                break
-            
-        cam.release()
+        # Convert to mediapipe image
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+        
+        # Detect hands and call the callback function
+        self.recognizer.recognize_async(mp_image, timestamp)
         
         
     
         
 if __name__ == '__main__':
+    # Init hand detector object
     mpgr = Mediapipe_GestureRecognizer()
-    mpgr.main()
+    
+    # Open the camera live feed and process the frames
+    cam = cv2.VideoCapture(1)
+    
+    frame_number = 0
+    while cam.isOpened():
+        # Capture frame
+        ret, frame = cam.read()
+        if not ret:
+            mpgr.logger.warning("Skipping empty frame")
+            continue
+        
+        # Flip image horizontally
+        frame = cv2.flip(frame, 1)
+        
+        # Detect hands
+        mpgr.detect_hands_async(frame, frame_number)
+        frame_number += 1
+        
+        # Draw hands
+        mpgr.draw_results(frame)
+        
+        # Display frame
+        cv2.imshow("Live feed", frame)            
+        if cv2.waitKey(5) & 0xFF == ord('q'):
+            break
+        
+    # Release the camera
+    cam.release()
+    cv2.destroyAllWindows()
