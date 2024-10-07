@@ -27,7 +27,7 @@ left_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec(
     color=(0,0,255)
 )
 
-# Hand connections
+# Hand connections: pair of landmarks where a line is present
 connections = [
     (0, 1), (1, 2), (2, 3), (3, 4),
     (0, 5), (5, 6), (6, 7), (7, 8),
@@ -45,7 +45,8 @@ class Mediapipe_GestureRecognizer():
         mode = 1, 
         min_hand_detection_confidence = 0.3,
         min_hand_presence_confidence = 0.3,
-        min_tracking_confidence = 0.3
+        min_tracking_confidence = 0.3,
+        show_hand_plot = True
     ):
         
         self.logger = logging.getLogger()
@@ -80,13 +81,15 @@ class Mediapipe_GestureRecognizer():
         # Create the recognizer object
         self.recognizer = GestureRecognizer.create_from_options(options)
         
-                
-        plt.ion()
-        self.hands_fig = plt.figure()
-        self.left_hand_ax = self.hands_fig.add_subplot(121, projection='3d')
-        self.left_hand_ax.set_title("Left hand")
-        self.right_hand_ax = self.hands_fig.add_subplot(122, projection='3d')
-        self.right_hand_ax.set_title("Right hand")
+        # Create plot
+        self.show_plot = show_hand_plot
+        if self.show_plot:                
+            plt.ion()
+            self.hands_fig = plt.figure()
+            self.left_hand_ax = self.hands_fig.add_subplot(121, projection='3d')
+            self.left_hand_ax.set_title("Left hand")
+            self.right_hand_ax = self.hands_fig.add_subplot(122, projection='3d')
+            self.right_hand_ax.set_title("Right hand")
 
         
     
@@ -154,7 +157,11 @@ class Mediapipe_GestureRecognizer():
     
     def plot_hands_3d(self):
         
-        plt.cla()
+        if not self.show_plot:
+            self.logger.debug("Calling plotting function but plot is disabled")
+            return
+        
+        #plt.cla()
         #self.ax.scatter(xs, ys, zs, marker=m)
         
         """ if self.right_hand_coordinates is not None:
@@ -171,14 +178,15 @@ class Mediapipe_GestureRecognizer():
         self.hands_fig.canvas.flush_events()
         
     def plot_hand(self, ax, coord, landmark_color, line_color):
-        if coord is None:
-            return
         
         # Set the ax as active
         plt.sca(ax)
         
         # Clear the plot
         plt.cla()
+        
+        if coord is None:
+            return
         
         # Plot the new points
         ax.scatter(*zip(*coord), c=landmark_color)
