@@ -170,92 +170,28 @@ class Mediapipe_GestureRecognizer():
 
             
         return frame
-    
-    
-    
-    def plot_hands_3d(self):
-        
-        if not self.show_plot:
-            self.logger.debug("Calling plotting function but plot is disabled")
-            return
-        
-        #plt.cla()
-        #self.ax.scatter(xs, ys, zs, marker=m)
-        
-        """ if self.right_hand_coordinates is not None:
-            for landmark in self.right_hand_coordinates:
-                self.ax.scatter(landmark[0], landmark[1], landmark[2]) """
-                
-        """ if self.right_hand_coordinates is not None:
-            self.right_hand_ax.scatter(*zip(*self.right_hand_coordinates)) """
-        
-        self.plot_hand(self.right_hand_ax, self.right_hand_coordinates, 'b', 'k', "Right hand")
-        self.plot_hand(self.left_hand_ax, self.left_hand_coordinates, 'r', 'k', "Left hand")
-
-        self.hands_fig.canvas.draw()
-        self.hands_fig.canvas.flush_events()
-        
-    def plot_hand(self, ax, coord, landmark_color, line_color, title):
-        
-        # Set the ax as active
-        plt.sca(ax)
-        
-        # Clear the plot
-        plt.cla()        
-        
-        ax.set_title(title)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-        
-        if coord is None:
-            return
-        
-        # Plot the new points
-        ax.scatter(*zip(*coord), c=landmark_color)
-        
-        # Plot the connections
-        for i,j in connections:
-            ax.plot([coord[i,0], coord[j,0]], [coord[i,1], coord[j,1]], [coord[i,2], coord[j,2]], c=line_color)
             
-    
-    
     def convert_results_to_numpy(self):
         
         if self.results is None:
             return
         
-        # Create two empty arrays: one for right and one for left hand
-        self.right_hand_coordinates = None
-        self.left_hand_coordinates = None
+        # Create an empty array
+        # 2 hands, 21 points, 3 coordinates
+        self.results_numpy = np.zeros(shape=(2, 21, 3), dtype=float)
         
-        # NOTE here we use world coordinates
-        for i, landmarks in enumerate(self.results.hand_world_landmarks):
+        for i, landmarks in enumerate(self.results.hand_landmarks):
             
             # Check if right or left hand
             handedness = self.results.handedness[i][0].index   # right: 0, left: 1
             #print(handedness)
             
-            # Copy to the correct numpy array
-            if handedness == 0:
-                self.right_hand_coordinates = self.copy_coordinates_to_numpy_array(landmarks)
-            elif handedness == 1:
-                self.left_hand_coordinates = self.copy_coordinates_to_numpy_array(landmarks)
-            else:
-                self.logger.error("Invalid handedness")
-                exit()
-                
-    
-    
-    def copy_coordinates_to_numpy_array(self, src):
-        dst = np.zeros(shape=(21, 3), dtype=float)
-        for i, landmark in enumerate(src):
-            dst[i, 0] = landmark.x
-            dst[i, 1] = landmark.y
-            dst[i, 2] = landmark.z          
-        return dst  
-    
-    
+            # Copy each point in the numpy array
+            for j, landmark in enumerate(landmarks):
+                self.results_numpy[handedness, j, 0] = landmark.x
+                self.results_numpy[handedness, j, 1] = landmark.y
+                self.results_numpy[handedness, j, 2] = landmark.z               
+            
     
     def detect_hands(self, frame, timestamp):
         
@@ -270,16 +206,6 @@ class Mediapipe_GestureRecognizer():
             self.detect_hands_video(frame, timestamp)
         elif self.mode == 0:
             self.detect_hands_image(frame)
-            
-        # Copy landmarks coordinates to numpy array
-        self.convert_results_to_numpy()
-        
-        self.logger.debug(f"Right hand: {self.right_hand_coordinates}")
-        self.logger.debug(f"Left hand: {self.left_hand_coordinates}")
-        
-        return self.right_hand_coordinates, self.left_hand_coordinates
-    
-    
     
     def detect_hands_live_stream(self, frame, timestamp):
         
@@ -368,7 +294,7 @@ if __name__ == '__main__':
     cv2.destroyAllWindows()
     
     # Get info about results
-    if True:
+    if False:
         print(f"results: {mpgr.results}")
         print(f"results.gestures: {mpgr.results.gestures}")
         print(f"results.handedness: {type(mpgr.results.handedness)}")
