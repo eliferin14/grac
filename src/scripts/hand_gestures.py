@@ -70,6 +70,7 @@ class Mediapipe_GestureRecognizer():
         self.recognizer = GestureRecognizer.create_from_options(options)
 
         
+    
     def draw_results_old(self, frame):
         
         if self.results is None:
@@ -94,6 +95,8 @@ class Mediapipe_GestureRecognizer():
                 )
             
         return frame
+    
+    
     
     def draw_results(self, frame):
         
@@ -128,14 +131,16 @@ class Mediapipe_GestureRecognizer():
             
         return frame
             
+    
+    
     def convert_results_to_numpy(self):
         
         if self.results is None:
             return
         
-        # Create an empty array
-        # 2 hands, 21 points, 3 coordinates
-        self.results_numpy = np.zeros(shape=(2, 21, 3), dtype=float)
+        # Create two empty arrays: one for right and one for left hand
+        self.right_hand_coordinates = None
+        self.left_hand_coordinates = None
         
         for i, landmarks in enumerate(self.results.hand_landmarks):
             
@@ -143,12 +148,23 @@ class Mediapipe_GestureRecognizer():
             handedness = self.results.handedness[i][0].index   # right: 0, left: 1
             #print(handedness)
             
-            # Copy each point in the numpy array
-            for j, landmark in enumerate(landmarks):
-                self.results_numpy[handedness, j, 0] = landmark.x
-                self.results_numpy[handedness, j, 1] = landmark.y
-                self.results_numpy[handedness, j, 2] = landmark.z               
-            
+            # Copy to the correct numpy array
+            if handedness == 0:
+                self.right_hand_coordinates = self.copy_coordinates_to_numpy_array(landmarks)
+            else:
+                self.left_hand_coordinates = self.copy_coordinates_to_numpy_array(landmarks)
+                
+    
+    
+    def copy_coordinates_to_numpy_array(self, src):
+        dst = np.zeros(shape=(21, 3), dtype=float)
+        for i, landmark in enumerate(src):
+            dst[i, 0] = landmark.x
+            dst[i, 1] = landmark.y
+            dst[i, 2] = landmark.z          
+        return dst  
+    
+    
     
     def detect_hands(self, frame, timestamp):
         
@@ -167,9 +183,12 @@ class Mediapipe_GestureRecognizer():
         # Copy landmarks coordinates to numpy array
         self.convert_results_to_numpy()
         
-        #print(type(self.results_numpy))
+        self.logger.debug(f"Right hand: {self.right_hand_coordinates}")
+        self.logger.debug(f"Left hand: {self.left_hand_coordinates}")
         
-        return
+        return self.right_hand_coordinates, self.left_hand_coordinates
+    
+    
     
     def detect_hands_live_stream(self, frame, timestamp):
         
@@ -179,11 +198,15 @@ class Mediapipe_GestureRecognizer():
         # Detect hands and call the callback function
         self.recognizer.recognize_async(mp_image, timestamp)        
         
+    
+    
     def save_result_callback(self, results:GestureRecognizerResult, output_image:mp.Image, timestamp_ms:int):
         
         # Save the result in a variable, so it can be processed by other functions
         self.results = results
         
+    
+    
     def detect_hands_video(self, frame, timestamp):
         
         # Convert to mediapipe image
@@ -192,6 +215,8 @@ class Mediapipe_GestureRecognizer():
         # Detect hands
         self.results = self.recognizer.recognize_for_video(mp_image, timestamp)
         
+    
+    
     def detect_hands_image(self, frame):
         
         # Convert to mediapipe image
