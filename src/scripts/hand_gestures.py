@@ -3,7 +3,6 @@ import numpy as np
 import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
-import enum
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -30,7 +29,13 @@ left_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec(
 # Gesture recognizer class
 class Mediapipe_GestureRecognizer():
     
-    def __init__(self, model_path = default_model_path, mode = 1):
+    def __init__(self, 
+        model_path = default_model_path, 
+        mode = 1, 
+        min_hand_detection_confidence = 0.3,
+        min_hand_presence_confidence = 0.3,
+        min_tracking_confidence = 0.3
+    ):
         
         self.logger = logging.getLogger()
         self.logger.info("Creating Mediapipe_GestureRecognizer instance")
@@ -38,30 +43,30 @@ class Mediapipe_GestureRecognizer():
         # Define a variable that will store the results of gesture recognition
         self.results = None
         
-        # Load the options: different modes for sync and async
+        # Create options object
+        options = GestureRecognizerOptions(
+            base_options=BaseOptions(model_asset_path=model_path), 
+            num_hands=2, 
+            min_hand_detection_confidence = min_hand_detection_confidence,
+            min_hand_presence_confidence = min_hand_presence_confidence,
+            min_tracking_confidence = min_tracking_confidence
+            )
+        
+        # Select running mode
         self.mode = mode
         if self.mode == 2:
-            options = GestureRecognizerOptions(
-                base_options=BaseOptions(model_asset_path=model_path),
-                running_mode=VisionRunningMode.LIVE_STREAM,
-                result_callback=self.save_result_callback,  
-                num_hands=2)
+            options.running_mode = VisionRunningMode.LIVE_STREAM
             self.logger.info("Live stream mode selected")
         elif self.mode == 1:
-            options = GestureRecognizerOptions(
-                base_options=BaseOptions(model_asset_path=model_path),
-                running_mode=VisionRunningMode.VIDEO,  
-                num_hands=2)
+            options.running_mode = VisionRunningMode.VIDEO
             self.logger.info("Video mode selected")
         elif self.mode == 0:
-            options = GestureRecognizerOptions(
-                base_options=BaseOptions(model_asset_path=model_path),
-                running_mode=VisionRunningMode.IMAGE,  
-                num_hands=2)
+            options.running_mode = VisionRunningMode.IMAGE
             self.logger.info("Image mode selected")
         else:
             self.logger.error("Invalid mode selected")
             
+        # Create the recognizer object
         self.recognizer = GestureRecognizer.create_from_options(options)
 
         
@@ -96,11 +101,11 @@ class Mediapipe_GestureRecognizer():
             return frame
         
         # See the bottom of this script to see the structure of the data
-        print(len(self.results.hand_landmarks))
+        #print(len(self.results.hand_landmarks))
         for i, landmarks in enumerate(self.results.hand_landmarks):
             
             handedness = self.results.handedness[i]
-            print(f"i: {i}, handedness: {handedness[0].display_name}")
+            #print(f"i: {i}, handedness: {handedness[0].display_name}")
             
             # Draw the pose landmarks
             hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
@@ -179,6 +184,7 @@ if __name__ == '__main__':
     
     # Open the camera live feed and process the frames
     cam = cv2.VideoCapture(1)
+    assert cam.isOpened()
     
     frame_number = 0
     while cam.isOpened():
