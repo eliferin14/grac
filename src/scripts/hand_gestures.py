@@ -110,6 +110,7 @@ class Mediapipe_GestureRecognizer():
             # Draw the pose landmarks
             hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
             hand_landmarks_proto.landmark.extend([ landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in landmarks ])
+            #print(type(hand_landmarks_proto))
             
             # Specify the style
             style = solutions.drawing_styles.get_default_hand_landmarks_style()
@@ -127,6 +128,26 @@ class Mediapipe_GestureRecognizer():
             
         return frame
             
+    def convert_results_to_numpy(self):
+        
+        if self.results is None:
+            return
+        
+        # Create an empty array
+        # 2 hands, 21 points, 3 coordinates
+        self.results_numpy = np.zeros(shape=(2, 21, 3), dtype=float)
+        
+        for i, landmarks in enumerate(self.results.hand_landmarks):
+            
+            # Check if right or left hand
+            handedness = self.results.handedness[i][0].index   # right: 0, left: 1
+            #print(handedness)
+            
+            # Copy each point in the numpy array
+            for j, landmark in enumerate(landmarks):
+                self.results_numpy[handedness, j, 0] = landmark.x
+                self.results_numpy[handedness, j, 1] = landmark.y
+                self.results_numpy[handedness, j, 2] = landmark.z               
             
     
     def detect_hands(self, frame, timestamp):
@@ -142,6 +163,13 @@ class Mediapipe_GestureRecognizer():
             self.detect_hands_video(frame, timestamp)
         elif self.mode == 0:
             self.detect_hands_image(frame)
+            
+        # Copy landmarks coordinates to numpy array
+        self.convert_results_to_numpy()
+        
+        #print(type(self.results_numpy))
+        
+        return
     
     def detect_hands_live_stream(self, frame, timestamp):
         
@@ -217,12 +245,13 @@ if __name__ == '__main__':
     cv2.destroyAllWindows()
     
     # Get info about results
-    print(f"results: {mpgr.results}")
-    print(f"results.gestures: {mpgr.results.gestures}")
-    print(f"results.handedness: {type(mpgr.results.handedness)}")
-    print(f"results.hand_landmarks: {mpgr.results.hand_landmarks}")
-    print(f"results.hand_world_landmarks: {mpgr.results.gestures}")
-    print(f"style: {solutions.drawing_styles.get_default_hand_landmarks_style()}")
+    if False:
+        print(f"results: {mpgr.results}")
+        print(f"results.gestures: {mpgr.results.gestures}")
+        print(f"results.handedness: {type(mpgr.results.handedness)}")
+        print(f"results.hand_landmarks: {mpgr.results.hand_landmarks}")
+        print(f"results.hand_world_landmarks: {mpgr.results.gestures}")
+        print(f"style: {solutions.drawing_styles.get_default_hand_landmarks_style()}")
     
 ''' GestureRecogizerResult structure:
 results
