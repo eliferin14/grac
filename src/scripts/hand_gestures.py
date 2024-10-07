@@ -3,6 +3,7 @@ import numpy as np
 import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
+import matplotlib.pyplot as plt
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -25,6 +26,16 @@ right_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec(
 left_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec(
     color=(0,0,255)
 )
+
+# Hand connections
+connections = [
+    (0, 1), (1, 2), (2, 3), (3, 4),
+    (0, 5), (5, 6), (6, 7), (7, 8),
+    (9, 10), (10, 11), (11, 12), 
+    (13, 14), (14, 15), (15, 16), 
+    (0, 17), (17, 18), (18, 19), (19, 20),
+    (5, 9), (9, 13), (13, 17)
+]
 
 # Gesture recognizer class
 class Mediapipe_GestureRecognizer():
@@ -68,6 +79,14 @@ class Mediapipe_GestureRecognizer():
             
         # Create the recognizer object
         self.recognizer = GestureRecognizer.create_from_options(options)
+        
+                
+        plt.ion()
+        self.hands_fig = plt.figure()
+        self.left_hand_ax = self.hands_fig.add_subplot(121, projection='3d')
+        self.left_hand_ax.set_title("Left hand")
+        self.right_hand_ax = self.hands_fig.add_subplot(122, projection='3d')
+        self.right_hand_ax.set_title("Right hand")
 
         
     
@@ -130,6 +149,43 @@ class Mediapipe_GestureRecognizer():
                 )
             
         return frame
+    
+    
+    
+    def plot_hands_3d(self):
+        
+        plt.cla()
+        #self.ax.scatter(xs, ys, zs, marker=m)
+        
+        """ if self.right_hand_coordinates is not None:
+            for landmark in self.right_hand_coordinates:
+                self.ax.scatter(landmark[0], landmark[1], landmark[2]) """
+                
+        """ if self.right_hand_coordinates is not None:
+            self.right_hand_ax.scatter(*zip(*self.right_hand_coordinates)) """
+        
+        self.plot_hand(self.right_hand_ax, self.right_hand_coordinates, 'b', 'k')
+        self.plot_hand(self.left_hand_ax, self.left_hand_coordinates, 'r', 'k')
+
+        self.hands_fig.canvas.draw()
+        self.hands_fig.canvas.flush_events()
+        
+    def plot_hand(self, ax, coord, landmark_color, line_color):
+        if coord is None:
+            return
+        
+        # Set the ax as active
+        plt.sca(ax)
+        
+        # Clear the plot
+        plt.cla()
+        
+        # Plot the new points
+        ax.scatter(*zip(*coord), c=landmark_color)
+        
+        # Plot the connections
+        for i,j in connections:
+            ax.plot([coord[i,0], coord[j,0]], [coord[i,1], coord[j,1]], [coord[i,2], coord[j,2]], c=line_color)
             
     
     
@@ -151,8 +207,11 @@ class Mediapipe_GestureRecognizer():
             # Copy to the correct numpy array
             if handedness == 0:
                 self.right_hand_coordinates = self.copy_coordinates_to_numpy_array(landmarks)
-            else:
+            elif handedness == 1:
                 self.left_hand_coordinates = self.copy_coordinates_to_numpy_array(landmarks)
+            else:
+                self.logger.error("Invalid handedness")
+                exit()
                 
     
     
@@ -261,6 +320,9 @@ if __name__ == '__main__':
         cv2.imshow("Live feed", frame)            
         if cv2.waitKey(5) & 0xFF == ord('q'):
             break
+        
+        # 3D plot of hands
+        mpgr.plot_hands_3d()
         
         if mpgr.results is not None and False:
             break
