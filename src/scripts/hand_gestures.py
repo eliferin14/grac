@@ -6,7 +6,7 @@ from mediapipe.framework.formats import landmark_pb2
 import matplotlib.pyplot as plt
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # Some parameters for the model (default ones)
 BaseOptions = mp.tasks.BaseOptions
@@ -68,6 +68,7 @@ class Mediapipe_GestureRecognizer():
         self.mode = mode
         if self.mode == 2:
             options.running_mode = VisionRunningMode.LIVE_STREAM
+            options.result_callback = self.save_result_callback
             self.logger.info("Live stream mode selected")
         elif self.mode == 1:
             options.running_mode = VisionRunningMode.VIDEO
@@ -120,19 +121,20 @@ class Mediapipe_GestureRecognizer():
     
     
     
-    def draw_results(self, frame):
+    def draw_results(self, frame, bb=True):
         
         if self.results is None:
             return frame
         
         # See the bottom of this script to see the structure of the data
         #print(len(self.results.hand_landmarks))
+        # NOTE here we use pixel coordinates
         for i, landmarks in enumerate(self.results.hand_landmarks):
             
             handedness = self.results.handedness[i]
             #print(f"i: {i}, handedness: {handedness[0].display_name}")
             
-            # Draw the pose landmarks
+            # Copy the points to a protobuffer
             hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
             hand_landmarks_proto.landmark.extend([ landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in landmarks ])
             #print(type(hand_landmarks_proto))
@@ -144,12 +146,28 @@ class Mediapipe_GestureRecognizer():
             else:
                 style = left_hand_drawing_specs
             
+            # Draw the landmarks
             solutions.drawing_utils.draw_landmarks(
                     frame,
                     hand_landmarks_proto,
                     solutions.hands.HAND_CONNECTIONS,
                     style
                 )
+            
+            # Draw the bounding box
+            min_x = min([landmark.x for landmark in landmarks])
+            max_x = max([landmark.x for landmark in landmarks])
+            min_y = min([landmark.y for landmark in landmarks])
+            max_y = max([landmark.y for landmark in landmarks])
+            
+            width = int((max_x - min_x) * frame.shape[1])
+            height = int((max_y - min_y) * frame.shape[0])
+            
+            top_left_x = int(min_x * frame.shape[1])
+            top_left_y = int(min_y * frame.shape[0])
+            cv2.rectangle(frame, (top_left_x, top_left_y), (top_left_x + width, top_left_y + height), (0, 255, 0), 2)
+
+
             
         return frame
     
@@ -171,19 +189,24 @@ class Mediapipe_GestureRecognizer():
         """ if self.right_hand_coordinates is not None:
             self.right_hand_ax.scatter(*zip(*self.right_hand_coordinates)) """
         
-        self.plot_hand(self.right_hand_ax, self.right_hand_coordinates, 'b', 'k')
-        self.plot_hand(self.left_hand_ax, self.left_hand_coordinates, 'r', 'k')
+        self.plot_hand(self.right_hand_ax, self.right_hand_coordinates, 'b', 'k', "Right hand")
+        self.plot_hand(self.left_hand_ax, self.left_hand_coordinates, 'r', 'k', "Left hand")
 
         self.hands_fig.canvas.draw()
         self.hands_fig.canvas.flush_events()
         
-    def plot_hand(self, ax, coord, landmark_color, line_color):
+    def plot_hand(self, ax, coord, landmark_color, line_color, title):
         
         # Set the ax as active
         plt.sca(ax)
         
         # Clear the plot
-        plt.cla()
+        plt.cla()        
+        
+        ax.set_title(title)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
         
         if coord is None:
             return
@@ -206,7 +229,8 @@ class Mediapipe_GestureRecognizer():
         self.right_hand_coordinates = None
         self.left_hand_coordinates = None
         
-        for i, landmarks in enumerate(self.results.hand_landmarks):
+        # NOTE here we use world coordinates
+        for i, landmarks in enumerate(self.results.hand_world_landmarks):
             
             # Check if right or left hand
             handedness = self.results.handedness[i][0].index   # right: 0, left: 1
@@ -304,7 +328,11 @@ if __name__ == '__main__':
     
     # Open the camera live feed and process the frames
     cam = cv2.VideoCapture(1)
+    #cam.open(2)
     assert cam.isOpened()
+    
+    cam.set(CV_CAP_PROP_FRAME_WIDTH,640);
+    cam.set(CV_CAP_PROP_FRAME_HEIGHT,480);
     
     frame_number = 0
     while cam.isOpened():
@@ -340,7 +368,7 @@ if __name__ == '__main__':
     cv2.destroyAllWindows()
     
     # Get info about results
-    if False:
+    if True:
         print(f"results: {mpgr.results}")
         print(f"results.gestures: {mpgr.results.gestures}")
         print(f"results.handedness: {type(mpgr.results.handedness)}")

@@ -71,7 +71,9 @@ if __name__ == "__main__":
         frame_number += 1
         
         # Draw hands and pose
-        frame = grac.draw_results(frame)     
+        frame = grac.draw_results(frame)   
+        # 3D plot of hands
+        grac.mpgr.plot_hands_3d()  
         
         # Flip image horizontally
         frame = cv2.flip(frame, 1)  
