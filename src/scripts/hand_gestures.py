@@ -54,6 +54,8 @@ class Mediapipe_GestureRecognizer():
         
         # Define a variable that will store the results of gesture recognition
         self.results = None
+        self.right_hand_coordinates, self.left_hand_coordinates = None, None
+        self.right_hand_gesture, self.left_hand_gesture = None, None
         
         # Create options object
         options = GestureRecognizerOptions(
@@ -285,6 +287,7 @@ class Mediapipe_GestureRecognizer():
             self.detect_hands_image(frame)
             
         # Copy landmarks coordinates to numpy array
+        self.right_hand_coordinates, self.left_hand_coordinates = None, None
         self.convert_results_to_numpy()
         
         self.logger.debug(f"Right hand: {self.right_hand_coordinates}")
