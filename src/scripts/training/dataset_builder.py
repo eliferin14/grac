@@ -14,6 +14,7 @@ parser.add_argument("-N", type=int, default=10, help="Number of frames to captur
 parser.add_argument("-T", type=float, default=0.1, help="Time interval between frames")
 parser.add_argument("--dataset_path", type=str, default="dataset", help="Dataset path")
 parser.add_argument("-g", "--gesture_name", type=str, default="none", help="Name of the gesture")
+parser.add_argument("--countdown", type=int, default=5, help="Countdown (seconds) before starting to capture")
 
 if __name__ == "__main__":
     
@@ -28,6 +29,24 @@ if __name__ == "__main__":
     # Open camera
     cam = cv2.VideoCapture(args.camera_id)
     assert cam.isOpened()
+    
+    while True:
+        # Capture frame
+        ret, frame = cam.read()
+        if not ret:
+            print("Skipping frame")
+            continue 
+        
+        # Display frame
+        cv2.imshow("Live feed", frame)            
+        if cv2.waitKey(5) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+            break
+    
+    # Countdown
+    for i in range(args.countdown):
+        print(f"Countdown: {args.countdown - i}")
+        time.sleep(1)
     
     # Loop to capture N frames
     for i in range(args.N):

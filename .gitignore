@@ -52,3 +52,4 @@ CATKIN_IGNORE
 
 # Ignore custom dataset
 src/scripts/training/dataset/
+src/scripts/training/exported_model/
