@@ -121,7 +121,7 @@ class Mediapipe_GestureRecognizer():
     
     
     
-    def draw_results(self, frame):
+    def draw_results(self, frame, draw_bb=True):
         
         if self.results is None:
             return frame
@@ -155,20 +155,33 @@ class Mediapipe_GestureRecognizer():
                 )
             
             # Draw the bounding box
-            min_x = min([landmark.x for landmark in landmarks])
-            max_x = max([landmark.x for landmark in landmarks])
-            min_y = min([landmark.y for landmark in landmarks])
-            max_y = max([landmark.y for landmark in landmarks])
-            
-            width = int((max_x - min_x) * frame.shape[1])
-            height = int((max_y - min_y) * frame.shape[0])
-            
-            top_left_x = int(min_x * frame.shape[1])
-            top_left_y = int(min_y * frame.shape[0])
-            cv2.rectangle(frame, (top_left_x, top_left_y), (top_left_x + width, top_left_y + height), (0, 255, 0), 2)
-
+            if draw_bb:
+                min_x = min([landmark.x for landmark in landmarks])
+                max_x = max([landmark.x for landmark in landmarks])
+                min_y = min([landmark.y for landmark in landmarks])
+                max_y = max([landmark.y for landmark in landmarks])
+                
+                width = int((max_x - min_x) * frame.shape[1])
+                height = int((max_y - min_y) * frame.shape[0])
+                
+                top_left_x = int(min_x * frame.shape[1])
+                top_left_y = int(min_y * frame.shape[0])
+                color = (255,0,0) if handedness[0].index==0 else (0,0,255)
+                cv2.rectangle(frame, (top_left_x, top_left_y), (top_left_x + width, top_left_y + height), color, 2)
             
         return frame
+                
+            
+    
+    def draw_labels(self, frame, height=50):
+        
+        right_label = self.right_hand_gesture.category_name if self.right_hand_gesture is not None else "None"
+        left_label = self.left_hand_gesture.category_name if self.left_hand_gesture is not None else "None"
+        frame = cv2.putText(frame, left_label, org=(50, height), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2, lineType=cv2.LINE_AA)
+        frame = cv2.putText(frame, right_label, org=(50, 2*height), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness=2, lineType=cv2.LINE_AA)
+            
+        return frame
+        
     
     
     def plot_hands_3d(self):
@@ -225,7 +238,10 @@ class Mediapipe_GestureRecognizer():
         
         # Create two empty arrays: one for right and one for left hand
         self.right_hand_coordinates = None
-        self.left_hand_coordinates = None
+        self.left_hand_coordinates = None        
+        
+        self.right_hand_gesture = None
+        self.left_hand_gesture = None
         
         for i, landmarks in enumerate(self.results.hand_landmarks):
             
@@ -233,11 +249,14 @@ class Mediapipe_GestureRecognizer():
             handedness = self.results.handedness[i][0].index   # right: 0, left: 1
             #print(handedness)
             
-            # Copy to the correct numpy array
+            # Copy results to numpy arrays
             if handedness == 0:
                 self.right_hand_coordinates = self.copy_coordinates_to_numpy_array(landmarks)
+                self.right_hand_gesture = self.results.gestures[i][0]
             else:
                 self.left_hand_coordinates = self.copy_coordinates_to_numpy_array(landmarks)
+                self.left_hand_gesture = self.results.gestures[i][0]
+            
                 
     
     

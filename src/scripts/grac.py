@@ -81,6 +81,8 @@ if __name__ == "__main__":
         # Flip image horizontally
         frame = cv2.flip(frame, 1)  
         
+        frame = grac.mpgr.draw_labels(frame)
+        
         # Display frame
         cv2.imshow("Live feed", frame)            
         if cv2.waitKey(5) & 0xFF == ord('q'):
