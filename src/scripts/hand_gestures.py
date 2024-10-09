@@ -270,8 +270,8 @@ if __name__ == '__main__':
     #cam.open(2)
     assert cam.isOpened()
     
-    cam.set(CV_CAP_PROP_FRAME_WIDTH,640);
-    cam.set(CV_CAP_PROP_FRAME_HEIGHT,480);
+    cam.set(cv2.CV_CAP_PROP_FRAME_WIDTH,640);
+    cam.set(cv2.CV_CAP_PROP_FRAME_HEIGHT,480);
     
     frame_number = 0
     while cam.isOpened():
