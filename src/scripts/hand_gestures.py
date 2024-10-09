@@ -81,6 +81,16 @@ class Mediapipe_GestureRecognizer():
             
         # Create the recognizer object
         self.recognizer = GestureRecognizer.create_from_options(options)
+        
+        # Create plot
+        self.show_plot = show_hand_plot
+        if self.show_plot:                
+            plt.ion()
+            self.hands_fig = plt.figure()
+            self.left_hand_ax = self.hands_fig.add_subplot(121, projection='3d')
+            self.left_hand_ax.set_title("Left hand")
+            self.right_hand_ax = self.hands_fig.add_subplot(122, projection='3d')
+            self.right_hand_ax.set_title("Right hand")
 
         
     
@@ -157,9 +167,54 @@ class Mediapipe_GestureRecognizer():
             top_left_y = int(min_y * frame.shape[0])
             cv2.rectangle(frame, (top_left_x, top_left_y), (top_left_x + width, top_left_y + height), (0, 255, 0), 2)
 
-
             
         return frame
+    
+    
+    def plot_hands_3d(self):
+        
+        if not self.show_plot:
+            self.logger.debug("Calling plotting function but plot is disabled")
+            return
+        
+        #plt.cla()
+        #self.ax.scatter(xs, ys, zs, marker=m)
+        
+        """ if self.right_hand_coordinates is not None:
+            for landmark in self.right_hand_coordinates:
+                self.ax.scatter(landmark[0], landmark[1], landmark[2]) """
+                
+        """ if self.right_hand_coordinates is not None:
+            self.right_hand_ax.scatter(*zip(*self.right_hand_coordinates)) """
+        
+        self.plot_hand(self.right_hand_ax, self.right_hand_coordinates, 'b', 'k', "Right hand")
+        self.plot_hand(self.left_hand_ax, self.left_hand_coordinates, 'r', 'k', "Left hand")
+
+        self.hands_fig.canvas.draw()
+        self.hands_fig.canvas.flush_events()
+        
+    def plot_hand(self, ax, coord, landmark_color, line_color, title):
+        
+        # Set the ax as active
+        plt.sca(ax)
+        
+        # Clear the plot
+        plt.cla()        
+        
+        ax.set_title(title)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+        
+        if coord is None:
+            return
+        
+        # Plot the new points
+        ax.scatter(*zip(*coord), c=landmark_color)
+        
+        # Plot the connections
+        for i,j in connections:
+            ax.plot([coord[i,0], coord[j,0]], [coord[i,1], coord[j,1]], [coord[i,2], coord[j,2]], c=line_color)
             
     
     

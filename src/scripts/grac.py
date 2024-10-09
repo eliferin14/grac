@@ -6,6 +6,7 @@ from hand_gestures import Mediapipe_GestureRecognizer
 # Command line arguments
 parser = argparse.ArgumentParser(description="Hello")
 parser.add_argument("--camera_id", type=int, default=1, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+parser.add_argument("--model_path", type=str, default="gesture_recognizer_original.task", help="Path to the model .task file")
 parser.add_argument("--model_mode", type=int, default=1, help="Model running mode: 0=image, 1=video, 2=live")
 parser.add_argument("-mhdc", "--min_hand_detection_confidence", type=float, default=0.5, help="min_hand_detection_confidence")
 parser.add_argument("-mhpc", "--min_hand_presence_confidence", type=float, default=0.5, help="min_hand_presence_confidence")
@@ -13,10 +14,11 @@ parser.add_argument("-mhtc", "--min_hand_tracking_confidence", type=float, defau
 
 class GRAC():
     
-    def __init__(self, mode=1, mhdc=0.5, mhpc=0.5, mhtc=0.5):
+    def __init__(self, path, mode=1, mhdc=0.5, mhpc=0.5, mhtc=0.5):
         
         # Create a gesture recognizer model
         self.mpgr = Mediapipe_GestureRecognizer(
+            model_path=path,
             mode=mode,
             min_hand_detection_confidence=mhdc,
             min_hand_presence_confidence=mhpc,
@@ -49,6 +51,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     grac = GRAC(
+        path=args.model_path,
         mode=args.model_mode,
         mhdc=args.min_hand_detection_confidence,
         mhpc=args.min_hand_presence_confidence,
