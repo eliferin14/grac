@@ -15,17 +15,9 @@ GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
 GestureRecognizerResult = mp.tasks.vision.GestureRecognizerResult
 VisionRunningMode = mp.tasks.vision.RunningMode         # I want the live feed options -> for continuous videos
 
-# Default model path
-default_model_path = 'gesture_recognizer.task'
-
 # Define styles
-right_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec(
-    color=(255, 0, 0)
-)
-
-left_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec(
-    color=(0,0,255)
-)
+right_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec( color=(255, 0, 0) )
+left_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec( color=(0,0,255) )
 
 # Hand connections: pair of landmarks where a line is present
 connections = [
@@ -39,15 +31,27 @@ connections = [
 
 # Gesture recognizer class
 class Mediapipe_GestureRecognizer():
+    '''Class that provides a simplified interface for the mediapipe gesture_recognizer task
+    '''
     
     def __init__(self, 
-        model_path = default_model_path, 
+        model_path, 
         mode = 1, 
         min_hand_detection_confidence = 0.3,
         min_hand_presence_confidence = 0.3,
         min_tracking_confidence = 0.3,
         show_hand_plot = True
     ):
+        """_summary_
+
+        Args:
+            model_path (str): path to the model .task file
+            mode (int, optional): running mode of the model. 0:IMAGE, 1:VIDEO, 2:LIVE_STREAM. Defaults to 1.
+            min_hand_detection_confidence (float, optional): The minimum confidence score for the hand detection to be considered successful in palm detection model. Defaults to 0.3.
+            min_hand_presence_confidence (float, optional): The minimum confidence score of hand presence score in the hand landmark detection model. In Video mode and Live stream mode of Gesture Recognizer, if the hand presence confident score from the hand landmark model is below this threshold, it triggers the palm detection model. Otherwise, a lightweight hand tracking algorithm is used to determine the location of the hand(s) for subsequent landmark detection. Defaults to 0.3.
+            min_tracking_confidence (float, optional): The minimum confidence score for the hand tracking to be considered successful. This is the bounding box IoU threshold between hands in the current frame and the last frame. In Video mode and Stream mode of Gesture Recognizer, if the tracking fails, Gesture Recognizer triggers hand detection. Otherwise, the hand detection is skipped. Defaults to 0.3.
+            show_hand_plot (bool, optional): If true a 3D matplotlib representation of the hands is produced. Defaults to True.
+        """        ''''''
         
         self.logger = logging.getLogger()
         self.logger.info("Creating Mediapipe_GestureRecognizer instance")
@@ -93,37 +97,20 @@ class Mediapipe_GestureRecognizer():
             self.left_hand_ax.set_title("Left hand")
             self.right_hand_ax = self.hands_fig.add_subplot(122, projection='3d')
             self.right_hand_ax.set_title("Right hand")
+    
+    
+    
+    def draw_results(self, frame, draw_hands=True, draw_bb=True):
+        """Function that draws and shows the detection and classification results
 
-        
-    
-    def draw_results_old(self, frame):
-        
-        if self.results is None:
-            return frame
-        
-        # results is an object with all the data of the hands
-        # results.hand_landmarks is a list of sets of landmark. One set per hand detected
-        for landmarks in self.results.hand_landmarks:
-            # result is a list of landmarks of a single hand
-            # Draw the pose landmarks
-            hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
-            hand_landmarks_proto.landmark.extend([ landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in landmarks ])
-            
-            # Define the styles
-            style = solutions.drawing_styles.get_default_hand_landmarks_style()
-            
-            solutions.drawing_utils.draw_landmarks(
-                    frame,
-                    hand_landmarks_proto,
-                    solutions.hands.HAND_CONNECTIONS,
-                    style
-                )
-            
-        return frame
-    
-    
-    
-    def draw_results(self, frame, draw_bb=True):
+        Args:
+            frame (opencv image): Frame on which the results are drawn
+            draw_hands (bool, optional): if True the landmarks are drawn. Defaults to True.
+            draw_bb (bool, optional): if True the bounding box of each hand is drawn. Defaults to True.
+
+        Returns:
+            opencv image : processed image ready to be shown
+        """        ''''''
         
         if self.results is None:
             return frame
@@ -141,20 +128,21 @@ class Mediapipe_GestureRecognizer():
             hand_landmarks_proto.landmark.extend([ landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in landmarks ])
             #print(type(hand_landmarks_proto))
             
-            # Specify the style
-            style = solutions.drawing_styles.get_default_hand_landmarks_style()
-            if handedness[0].index == 0:    # Right hand
-                style = right_hand_drawing_specs
-            else:
-                style = left_hand_drawing_specs
-            
-            # Draw the landmarks
-            solutions.drawing_utils.draw_landmarks(
-                    frame,
-                    hand_landmarks_proto,
-                    solutions.hands.HAND_CONNECTIONS,
-                    style
-                )
+            if draw_hands:    
+                # Specify the style
+                style = solutions.drawing_styles.get_default_hand_landmarks_style()
+                if handedness[0].index == 0:    # Right hand
+                    style = right_hand_drawing_specs
+                else:
+                    style = left_hand_drawing_specs
+                
+                # Draw the landmarks
+                solutions.drawing_utils.draw_landmarks(
+                        frame,
+                        hand_landmarks_proto,
+                        solutions.hands.HAND_CONNECTIONS,
+                        style
+                    )
             
             # Draw the bounding box
             if draw_bb:
@@ -176,6 +164,15 @@ class Mediapipe_GestureRecognizer():
             
     
     def draw_labels(self, frame, height=50):
+        """Writes the names of the detected gestures on the image
+
+        Args:
+            frame (opencv image): input frame
+            height (int, optional): Height of the text. Defaults to 50.
+
+        Returns:
+            opencv image: processed frame
+        """        ''''''
         
         right_label = self.right_hand_gesture.category_name if self.right_hand_gesture is not None else "None"
         left_label = self.left_hand_gesture.category_name if self.left_hand_gesture is not None else "None"
@@ -187,6 +184,10 @@ class Mediapipe_GestureRecognizer():
     
     
     def plot_hands_3d(self):
+        """Produces a 3D plot of the hands landmarks using matplotlib
+        
+        The landmarks are memorized as a field of the class, and are updated at every step
+        """        ''''''
         
         if not self.show_plot:
             self.logger.debug("Calling plotting function but plot is disabled")
@@ -209,6 +210,15 @@ class Mediapipe_GestureRecognizer():
         self.hands_fig.canvas.flush_events()
         
     def plot_hand(self, ax, coord, landmark_color, line_color, title):
+        """Function that draws a hand in a plt.ax object
+
+        Args:
+            ax (plt.ax): Axis where to draw the hand plot
+            coord (21x3 numpy array): Set of 3D coordinates of the 21 landmarks of a hand
+            landmark_color : Color for the points
+            line_color : Color for the lines
+            title : Title of the plot
+        """        ''''''
         
         # Set the ax as active
         plt.sca(ax)
@@ -234,6 +244,8 @@ class Mediapipe_GestureRecognizer():
     
     
     def convert_results_to_numpy(self):
+        """Takes the output object of the model and extract the landmarks into a 21x3 numpy array
+        """        ''''''
         
         if self.results is None:
             return
@@ -273,18 +285,30 @@ class Mediapipe_GestureRecognizer():
     
     
     def detect_hands(self, frame, timestamp):
+        """Function that calls the gesture_recognizer model
+
+        Args:
+            frame (opencv image): frame where the model will detect hands
+            timestamp (int): increasing number. Required if VIDEO or LIVE_STREAM mode are selected
+
+        Returns:
+            2 21x3 numpy arrays: right and left hand coordinates
+        """        ''''''
         
         if frame is None:
             self.logger.warning("Empty frame received")
             return
         
+        # Convert to mediapipe image
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+        
         # Choose which function to call based on mode
         if self.mode == 2:
-            self.detect_hands_live_stream(frame, timestamp)
-        elif self.mode == 1:
-            self.detect_hands_video(frame, timestamp)
+            self.recognizer.recognize_async(mp_image, timestamp)   
+        elif self.mode == 1:             
+            self.results = self.recognizer.recognize_for_video(mp_image, timestamp)
         elif self.mode == 0:
-            self.detect_hands_image(frame)
+            self.results = self.recognizer.recognize(mp_image)
             
         # Copy landmarks coordinates to numpy array
         self.right_hand_coordinates, self.left_hand_coordinates = None, None
@@ -294,16 +318,6 @@ class Mediapipe_GestureRecognizer():
         self.logger.debug(f"Left hand: {self.left_hand_coordinates}")
         
         return self.right_hand_coordinates, self.left_hand_coordinates
-    
-    
-    
-    def detect_hands_live_stream(self, frame, timestamp):
-        
-        # Convert to mediapipe image
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-        
-        # Detect hands and call the callback function
-        self.recognizer.recognize_async(mp_image, timestamp)        
         
     
     
@@ -311,28 +325,6 @@ class Mediapipe_GestureRecognizer():
         
         # Save the result in a variable, so it can be processed by other functions
         self.results = results
-        
-    
-    
-    def detect_hands_video(self, frame, timestamp):
-        
-        # Convert to mediapipe image
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-        
-        # Detect hands
-        self.results = self.recognizer.recognize_for_video(mp_image, timestamp)
-        
-    
-    
-    def detect_hands_image(self, frame):
-        
-        # Convert to mediapipe image
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-        
-        # Detect hands
-        self.results = self.recognizer.recognize(mp_image)
-        
-        
         
         
     

@@ -13,12 +13,14 @@ parser.add_argument("-mhpc", "--min_hand_presence_confidence", type=float, defau
 parser.add_argument("-mhtc", "--min_hand_tracking_confidence", type=float, default=0.5, help="min_hand_tracking_confidence")
 
 class GRAC():
+    """Wrapper class that combines the hand and pose detection models
+    """    ''''''
     
-    def __init__(self, path, mode=1, mhdc=0.5, mhpc=0.5, mhtc=0.5):
+    def __init__(self, hand_model_path, pose_model_path, mode=1, mhdc=0.5, mhpc=0.5, mhtc=0.5):
         
         # Create a gesture recognizer model
         self.mpgr = Mediapipe_GestureRecognizer(
-            model_path=path,
+            model_path=hand_model_path,
             mode=mode,
             min_hand_detection_confidence=mhdc,
             min_hand_presence_confidence=mhpc,
@@ -28,14 +30,18 @@ class GRAC():
         # Create a pose detector model
         
     def detect(self, frame, timestamp):
+        """Call both the hand detection and pose estimation models
+
+        Args:
+            frame (opencv image): frame where the models will look for hands and pose
+            timestamp (int): increasing int required by VIDEO and LIVE_STREAM mode
+        """        ''''''
         
         if frame is None:
             return
         
         # Detect hands and pose in the frame
         self.mpgr.detect_hands(frame, timestamp)
-        
-        return frame
     
     def draw_results(self, frame):
         
