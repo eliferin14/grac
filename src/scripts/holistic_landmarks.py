@@ -15,9 +15,9 @@ mp_drawing = mp.solutions.drawing_utils # Drawing utilities
   
 def mediapipe_detection(image, model): 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # COLOR CONVERSION BGR 2 RGB 
-    image.flags.writable = False                  # Image is no longer writable 
+    #image.flags.writable = False                  # Image is no longer writable 
     results = model.process(image)                 # Make prediction 
-    image.flags.writable = True                   # Image is now writable  
+    #image.flags.writable = True                   # Image is now writable  
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # COLOR CONVERSION RGB 2 BGR 
     return image, results 
     

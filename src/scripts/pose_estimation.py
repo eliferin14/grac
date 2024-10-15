@@ -72,14 +72,7 @@ class Mediapipe_PoseLandmarker():
         self.pose_coordinates = None
             
             
-    def detect_pose(self, frame, timestamp):
-        
-        if frame is None:
-            self.logger.warning("Empty frame received")
-            return
-        
-        # Convert to mediapipe image
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+    def detect_pose(self, mp_image:mp.Image, timestamp:int):
         
         # Choose which function to call based on mode
         if self.mode == 2:

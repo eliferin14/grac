@@ -293,23 +293,16 @@ class Mediapipe_GestureRecognizer():
     
     
     
-    def detect_hands(self, frame, timestamp):
+    def detect_hands(self, mp_image:mp.Image, timestamp:int):
         """Function that calls the gesture_recognizer model
 
         Args:
-            frame (opencv image): frame where the model will detect hands
+            mp_image (mp.Image): frame where the model will detect hands
             timestamp (int): increasing number. Required if VIDEO or LIVE_STREAM mode are selected
 
         Returns:
             2 21x3 numpy arrays: right and left hand coordinates
         """        ''''''
-        
-        if frame is None:
-            self.logger.warning("Empty frame received")
-            return
-        
-        # Convert to mediapipe image
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
         
         # Choose which function to call based on mode
         if self.mode == 2:

@@ -1,5 +1,6 @@
 import cv2
 import argparse
+import mediapipe as mp
 
 from hand_gestures import Mediapipe_GestureRecognizer
 from pose_estimation import Mediapipe_PoseLandmarker
@@ -47,13 +48,17 @@ class GRAC():
         """        ''''''
         
         if frame is None:
+            self.logger.warning("Empty frame received")
             return
         
+        # Convert to mediapipe image
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+        
         # Detect hands
-        self.mpgr.detect_hands(frame, timestamp)
+        self.mpgr.detect_hands(mp_image, timestamp)
         
         # Detect pose
-        self.mppl.detect_pose(frame, timestamp)
+        self.mppl.detect_pose(mp_image, timestamp)
     
     def draw_results(self, frame):
         
