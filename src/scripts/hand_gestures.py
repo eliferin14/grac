@@ -248,7 +248,7 @@ class Mediapipe_GestureRecognizer():
     
     
     def convert_results_to_numpy(self):
-        """Takes the output object of the model and extract the landmarks into a 21x3 numpy array
+        """Takes the output object of the model and extract the landmarks world coordinates into a 21x3 numpy array
         """        ''''''
         
         if self.results is None:
@@ -288,11 +288,6 @@ class Mediapipe_GestureRecognizer():
     
     
     
-    def normalize_coordinates(self):
-        pass
-    
-    
-    
     def detect_hands(self, mp_image:mp.Image, timestamp:int):
         """Function that calls the gesture_recognizer model
 
@@ -321,6 +316,15 @@ class Mediapipe_GestureRecognizer():
         
         return self.right_hand_coordinates, self.left_hand_coordinates
     
+        
+    
+    
+    def save_result_callback(self, results:GestureRecognizerResult, output_image:mp.Image, timestamp_ms:int):
+        
+        # Save the result in a variable, so it can be processed by other functions
+        self.results = results
+        
+    
     
     
     def get_point_by_index(self, hand:int, index:int):
@@ -339,10 +343,24 @@ class Mediapipe_GestureRecognizer():
         
     
     
-    def save_result_callback(self, results:GestureRecognizerResult, output_image:mp.Image, timestamp_ms:int):
-        
-        # Save the result in a variable, so it can be processed by other functions
-        self.results = results
+    def get_right_hand_gesture(self):
+        """Get the gesture of the right hand"""
+        return self.right_hand_gesture
+    
+    def get_left_hand_gesture(self):
+        '''Get the gesture of the left hand'''
+        return self.left_hand_gesture
+    
+    def get_hand_gestures(self):
+        '''Get the gestures of right and left hands'''
+        return self.right_hand_gesture, self.left_hand_gesture
+    
+    
+    
+    
+    def get_hands_coordinates(self):
+        '''Get the 3D coordinates of the hand landmarks'''
+        return self.right_hand_coordinates, self.left_hand_coordinates
         
         
     

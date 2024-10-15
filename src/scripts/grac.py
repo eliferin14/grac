@@ -4,6 +4,7 @@ import mediapipe as mp
 
 from hand_gestures import Mediapipe_GestureRecognizer
 from pose_estimation import Mediapipe_PoseLandmarker
+from fps_counter import FPS_Counter
 
 # Command line arguments
 parser = argparse.ArgumentParser(description="Hello")
@@ -18,11 +19,14 @@ parser.add_argument("-mpdc", "--min_pose_detection_confidence", type=float, defa
 parser.add_argument("-mppc", "--min_pose_presence_confidence", type=float, default=0.5, help="min_pose_presence_confidence")
 parser.add_argument("-mptc", "--min_pose_tracking_confidence", type=float, default=0.5, help="min_pose_tracking_confidence")
 
+
+
+
 class GRAC():
     """Wrapper class that combines the hand and pose detection models
     """    ''''''
     
-    def __init__(self, hand_model_path, pose_model_path, mode=1, mhdc=0.5, mhpc=0.5, mhtc=0.5):
+    def __init__(self, hand_model_path, pose_model_path, mode=1, mhdc=0.5, mhpc=0.5, mhtc=0.5, mpdc=0.5, mppc=0.5, mptc=0.5):
         
         # Create a gesture recognizer model
         self.mpgr = Mediapipe_GestureRecognizer(
@@ -35,8 +39,13 @@ class GRAC():
         # Create a pose detector model
         self.mppl = Mediapipe_PoseLandmarker(
             model_path=pose_model_path,
-            mode = mode
+            mode = mode,
+            min_pose_detection_confidence=mpdc,
+            min_pose_presence_confidence=mppc,
+            min_tracking_confidence=mptc
         )
+        
+        
         
         
     def detect(self, frame, timestamp):
@@ -59,6 +68,10 @@ class GRAC():
         
         # Detect pose
         self.mppl.detect_pose(mp_image, timestamp)
+        
+        
+        
+        
     
     def draw_results(self, frame):
         
@@ -69,6 +82,14 @@ class GRAC():
         frame = self.mppl.draw_pose(frame)
         
         return frame
+    
+    
+    
+    
+    
+    
+    
+    
 
 if __name__ == "__main__":    
     
@@ -80,15 +101,25 @@ if __name__ == "__main__":
         mode=args.model_mode,
         mhdc=args.min_hand_detection_confidence,
         mhpc=args.min_hand_presence_confidence,
-        mhtc=args.min_hand_tracking_confidence
+        mhtc=args.min_hand_tracking_confidence,
+        mpdc=args.min_pose_detection_confidence,
+        mppc=args.min_pose_presence_confidence,
+        mptc=args.min_pose_tracking_confidence
         )
     
     # Open the camera live feed and process the frames
     cam = cv2.VideoCapture(args.camera_id)
     assert cam.isOpened()
     
+    # Fps counter
+    fps_counter = FPS_Counter()
+    
     frame_number = 0
     while cam.isOpened():
+        # Update fps
+        fps = fps_counter.get_fps()
+        print(f"FPS: {fps}")
+        
         # Capture frame
         ret, frame = cam.read()
         if not ret:
