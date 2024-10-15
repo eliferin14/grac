@@ -209,6 +209,9 @@ class Mediapipe_GestureRecognizer():
         self.hands_fig.canvas.draw()
         self.hands_fig.canvas.flush_events()
         
+        
+        
+        
     def plot_hand(self, ax, coord, landmark_color, line_color, title):
         """Function that draws a hand in a plt.ax object
 
@@ -236,6 +239,7 @@ class Mediapipe_GestureRecognizer():
         
         # Plot the new points
         ax.scatter(*zip(*coord), c=landmark_color)
+        ax.scatter(0,0,0, c='g')
         
         # Plot the connections
         for i,j in connections:
@@ -257,7 +261,7 @@ class Mediapipe_GestureRecognizer():
         self.right_hand_gesture = None
         self.left_hand_gesture = None
         
-        for i, landmarks in enumerate(self.results.hand_landmarks):
+        for i, landmarks in enumerate(self.results.hand_world_landmarks):
             
             # Check if right or left hand
             handedness = self.results.handedness[i][0].index   # right: 0, left: 1
@@ -281,6 +285,11 @@ class Mediapipe_GestureRecognizer():
             dst[i, 1] = landmark.y
             dst[i, 2] = landmark.z          
         return dst  
+    
+    
+    
+    def normalize_coordinates(self):
+        pass
     
     
     
@@ -318,6 +327,22 @@ class Mediapipe_GestureRecognizer():
         self.logger.debug(f"Left hand: {self.left_hand_coordinates}")
         
         return self.right_hand_coordinates, self.left_hand_coordinates
+    
+    
+    
+    def get_point_by_index(self, hand:int, index:int):
+        if self.results is None:
+            return
+        
+        if index < 0 or index > 20:
+            return
+        
+        if hand == 0 and self.right_hand_coordinates is not None: # right
+            return self.right_hand_coordinates[index]
+        elif hand == 1 and self.left_hand_coordinates is not None:
+            return self.left_hand_coordinates[index]
+        else:
+            return
         
     
     
