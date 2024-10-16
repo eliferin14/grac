@@ -130,19 +130,14 @@ class Mediapipe_PoseLandmarker():
                 )
             
         return frame
-    
-    def draw_mask(self, frame): 
-        return       
-        if self.results.segmentation_masks is None:
-            return frame
-        
-        segmentation_mask = self.results.segmentation_masks[0].numpy_view()
-        frame = np.repeat(segmentation_mask[:, :, np.newaxis], 3, axis=2) * 255
         
         
         
     def get_point_by_index(self, landmark_id):
-        pass
+        if self.pose_coordinates is None:
+            return
+        
+        return self.pose_coordinates[landmark_id]
         
         
             

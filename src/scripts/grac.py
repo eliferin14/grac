@@ -87,7 +87,15 @@ class GRAC():
     
     
     
-    def add_text(self, frame, text_list, text_height):
+    def add_text(self, frame, text_list, row_height):
+        """Adds text to a frame. 
+        The text is passed as a list of frame_text (which is a named tuple)
+
+        Args:
+            frame (opencv image): frame where to add the text
+            text_list (list[frame_text]): Set of text to be added
+            row_height (int): height of each row (pixels) 
+        """        ''''''
         
         for i, frame_text in enumerate(text_list):
             
@@ -98,7 +106,7 @@ class GRAC():
             name_str = "" if frame_text.name is None else f"{frame_text.name}: "
             
             # Draw the text on the frame
-            frame = cv2.putText(frame, name_str+value_str, org=(25, (i+1)*text_height), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=frame_text.color, thickness=2, lineType=cv2.LINE_AA)
+            frame = cv2.putText(frame, name_str+value_str, org=(25, (i+1)*row_height), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=frame_text.color, thickness=2, lineType=cv2.LINE_AA)
             
         
     
@@ -177,7 +185,7 @@ if __name__ == "__main__":
         text_list.append(frame_text('FPS', fps, (0,255,0)))
         if rhg is not None: text_list.append(frame_text(None, filtered_rhg, (255,0,0)))
         if lhg is not None: text_list.append(frame_text(None, filtered_lhg, (0,0,255)))
-        grac.add_text(frame, text_list, text_height=30)
+        grac.add_text(frame, text_list, row_height=30)
         
         # Display frame
         cv2.imshow("Live feed", frame)            

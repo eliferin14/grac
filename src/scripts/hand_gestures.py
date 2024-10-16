@@ -100,6 +100,44 @@ class Mediapipe_GestureRecognizer():
     
     
     
+    def detect_hands(self, mp_image:mp.Image, timestamp:int):
+        """Function that calls the gesture_recognizer model
+
+        Args:
+            mp_image (mp.Image): frame where the model will detect hands
+            timestamp (int): increasing number. Required if VIDEO or LIVE_STREAM mode are selected
+
+        Returns:
+            2 21x3 numpy arrays: right and left hand coordinates
+        """        ''''''
+        
+        # Choose which function to call based on mode
+        if self.mode == 2:
+            self.recognizer.recognize_async(mp_image, timestamp)   
+        elif self.mode == 1:             
+            self.results = self.recognizer.recognize_for_video(mp_image, timestamp)
+        elif self.mode == 0:
+            self.results = self.recognizer.recognize(mp_image)
+            
+        # Copy landmarks coordinates to numpy array
+        self.right_hand_coordinates, self.left_hand_coordinates = None, None
+        self.convert_results_to_numpy()
+        
+        self.logger.debug(f"Right hand: {self.right_hand_coordinates}")
+        self.logger.debug(f"Left hand: {self.left_hand_coordinates}")
+        
+        return self.right_hand_coordinates, self.left_hand_coordinates
+    
+        
+    
+    
+    def save_result_callback(self, results:GestureRecognizerResult, output_image:mp.Image, timestamp_ms:int):
+        
+        # Save the result in a variable, so it can be processed by other functions
+        self.results = results
+    
+    
+    
     def draw_results(self, frame, draw_hands=True, draw_bb=True):
         """Function that draws and shows the detection and classification results
 
@@ -285,44 +323,6 @@ class Mediapipe_GestureRecognizer():
             dst[i, 1] = landmark.y
             dst[i, 2] = landmark.z          
         return dst  
-    
-    
-    
-    def detect_hands(self, mp_image:mp.Image, timestamp:int):
-        """Function that calls the gesture_recognizer model
-
-        Args:
-            mp_image (mp.Image): frame where the model will detect hands
-            timestamp (int): increasing number. Required if VIDEO or LIVE_STREAM mode are selected
-
-        Returns:
-            2 21x3 numpy arrays: right and left hand coordinates
-        """        ''''''
-        
-        # Choose which function to call based on mode
-        if self.mode == 2:
-            self.recognizer.recognize_async(mp_image, timestamp)   
-        elif self.mode == 1:             
-            self.results = self.recognizer.recognize_for_video(mp_image, timestamp)
-        elif self.mode == 0:
-            self.results = self.recognizer.recognize(mp_image)
-            
-        # Copy landmarks coordinates to numpy array
-        self.right_hand_coordinates, self.left_hand_coordinates = None, None
-        self.convert_results_to_numpy()
-        
-        self.logger.debug(f"Right hand: {self.right_hand_coordinates}")
-        self.logger.debug(f"Left hand: {self.left_hand_coordinates}")
-        
-        return self.right_hand_coordinates, self.left_hand_coordinates
-    
-        
-    
-    
-    def save_result_callback(self, results:GestureRecognizerResult, output_image:mp.Image, timestamp_ms:int):
-        
-        # Save the result in a variable, so it can be processed by other functions
-        self.results = results
         
     
     
@@ -340,6 +340,7 @@ class Mediapipe_GestureRecognizer():
             return self.left_hand_coordinates[index]
         else:
             return
+
 
     
     def get_hand_gestures_names(self):
