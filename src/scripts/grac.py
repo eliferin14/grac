@@ -6,6 +6,7 @@ from collections import namedtuple
 from hand_gestures import Mediapipe_GestureRecognizer
 from pose_estimation import Mediapipe_PoseLandmarker
 from fps_counter import FPS_Counter
+from gesture_transition_manager import GestureTransitionManager
 
 # Command line arguments
 parser = argparse.ArgumentParser(description="Hello")
@@ -97,7 +98,6 @@ class GRAC():
             # Draw the text on the frame
             frame = cv2.putText(frame, name_str+value_str, org=(25, (i+1)*text_height), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=frame_text.color, thickness=2, lineType=cv2.LINE_AA)
             
-            
         
     
     
@@ -131,10 +131,14 @@ if __name__ == "__main__":
     # Fps counter
     fps_counter = FPS_Counter()
     
+    # Gesture managers
+    rightGTR = GestureTransitionManager(transition_timer=1)
+    
     # Named tuple for text to print on image
     frame_text = namedtuple('FrameText', ['name', 'value', 'color'])
     
     frame_number = 0
+    rhg, lhg = 0, 0
     while cam.isOpened():
         # Update fps
         fps = fps_counter.get_fps()
@@ -158,15 +162,18 @@ if __name__ == "__main__":
         # Flip image horizontally
         frame = cv2.flip(frame, 1)  
         
-        #frame = grac.mpgr.draw_labels(frame)
-        
         # Add info as text
-        rhg, lhg = grac.mpgr.get_hand_gestures()
+        rhg, lhg = grac.mpgr.get_hand_gestures_names()
         text_list = []
         text_list.append(frame_text('FPS', fps, (0,255,0)))
-        if rhg is not None: text_list.append(frame_text(None, rhg.category_name, (255,0,0)))
-        if lhg is not None: text_list.append(frame_text(None, lhg.category_name, (0,0,255)))
+        if rhg is not None: text_list.append(frame_text(None, rhg, (255,0,0)))
+        if lhg is not None: text_list.append(frame_text(None, lhg, (0,0,255)))
         grac.add_text(frame, text_list, text_height=30)
+        
+        # Compare the current gesture to the old gesture
+        if rhg is not None:
+            filtered_rhg = rightGTR.gesture_change_request(rhg)
+            print(filtered_rhg)
         
         # Display frame
         cv2.imshow("Live feed", frame)            

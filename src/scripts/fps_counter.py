@@ -14,6 +14,7 @@ class FPS_Counter():
         delta_t = self.t - t_old
         new_fps = 1.0 / delta_t
         
-        self.fps = (1-self.decay)*self.fps + self.decay*new_fps if self.fps > 0 else new_fps
+        # Recursive mean with decay factor
+        self.fps = (1-self.decay)*self.fps + self.decay*new_fps if self.fps > 0 and self.fps < 500 else new_fps
         
         return self.fps

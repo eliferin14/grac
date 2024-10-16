@@ -340,20 +340,13 @@ class Mediapipe_GestureRecognizer():
             return self.left_hand_coordinates[index]
         else:
             return
-        
+
     
-    
-    def get_right_hand_gesture(self):
-        """Get the gesture of the right hand"""
-        return self.right_hand_gesture
-    
-    def get_left_hand_gesture(self):
-        '''Get the gesture of the left hand'''
-        return self.left_hand_gesture
-    
-    def get_hand_gestures(self):
+    def get_hand_gestures_names(self):
         '''Get the gestures of right and left hands'''
-        return self.right_hand_gesture, self.left_hand_gesture
+        rhg = self.right_hand_gesture.category_name if self.right_hand_gesture is not None else None
+        lhg = self.left_hand_gesture.category_name if self.left_hand_gesture is not None else None
+        return rhg, lhg
     
     
     
