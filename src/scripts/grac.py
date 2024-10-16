@@ -20,6 +20,8 @@ parser.add_argument("--pose_model_path", type=str, default="pose_landmarker_full
 parser.add_argument("-mpdc", "--min_pose_detection_confidence", type=float, default=0.5, help="min_pose_detection_confidence")
 parser.add_argument("-mppc", "--min_pose_presence_confidence", type=float, default=0.5, help="min_pose_presence_confidence")
 parser.add_argument("-mptc", "--min_pose_tracking_confidence", type=float, default=0.5, help="min_pose_tracking_confidence")
+parser.add_argument("-gtt", "--gesture_transition_timer", type=float, default=0.3, help="Timer required for a new grsture to be registered")
+
 
 
 
@@ -132,7 +134,8 @@ if __name__ == "__main__":
     fps_counter = FPS_Counter()
     
     # Gesture managers
-    rightGTR = GestureTransitionManager(transition_timer=1)
+    rightGTR = GestureTransitionManager(transition_timer=args.gesture_transition_timer)
+    leftGTR = GestureTransitionManager(transition_timer=args.gesture_transition_timer)
     
     # Named tuple for text to print on image
     frame_text = namedtuple('FrameText', ['name', 'value', 'color'])
@@ -160,20 +163,21 @@ if __name__ == "__main__":
         #grac.mpgr.plot_hands_3d()  
         
         # Flip image horizontally
-        frame = cv2.flip(frame, 1)  
+        frame = cv2.flip(frame, 1) 
         
-        # Add info as text
+        # Extract gestures
         rhg, lhg = grac.mpgr.get_hand_gestures_names()
-        text_list = []
-        text_list.append(frame_text('FPS', fps, (0,255,0)))
-        if rhg is not None: text_list.append(frame_text(None, rhg, (255,0,0)))
-        if lhg is not None: text_list.append(frame_text(None, lhg, (0,0,255)))
-        grac.add_text(frame, text_list, text_height=30)
         
         # Compare the current gesture to the old gesture
-        if rhg is not None:
-            filtered_rhg = rightGTR.gesture_change_request(rhg)
-            print(filtered_rhg)
+        filtered_rhg = rightGTR.gesture_change_request(rhg)
+        filtered_lhg = leftGTR.gesture_change_request(lhg)
+        
+        # Add info as text        
+        text_list = []
+        text_list.append(frame_text('FPS', fps, (0,255,0)))
+        if rhg is not None: text_list.append(frame_text(None, filtered_rhg, (255,0,0)))
+        if lhg is not None: text_list.append(frame_text(None, filtered_lhg, (0,0,255)))
+        grac.add_text(frame, text_list, text_height=30)
         
         # Display frame
         cv2.imshow("Live feed", frame)            
