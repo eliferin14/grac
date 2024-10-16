@@ -1,6 +1,7 @@
 import cv2
 import argparse
 import mediapipe as mp
+from collections import namedtuple
 
 from hand_gestures import Mediapipe_GestureRecognizer
 from pose_estimation import Mediapipe_PoseLandmarker
@@ -76,12 +77,28 @@ class GRAC():
     def draw_results(self, frame):
         
         # Draw hands
-        frame = self.mpgr.draw_results(frame)
+        frame = self.mpgr.draw_results(frame, draw_bb=False)
         
         # Draw pose
         frame = self.mppl.draw_pose(frame)
+    
+    
+    
+    def add_text(self, frame, text_list, text_height):
         
-        return frame
+        for i, frame_text in enumerate(text_list):
+            
+            # If the value is a float, truncate to 2 decimals
+            value_str = f"{frame_text.value:.2f}" if type(frame_text.value) == float else f"{frame_text.value}"
+            
+            # If the name is None, do not use the :
+            name_str = "" if frame_text.name is None else f"{frame_text.name}: "
+            
+            # Draw the text on the frame
+            frame = cv2.putText(frame, name_str+value_str, org=(25, (i+1)*text_height), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=frame_text.color, thickness=2, lineType=cv2.LINE_AA)
+            
+            
+        
     
     
     
@@ -114,11 +131,13 @@ if __name__ == "__main__":
     # Fps counter
     fps_counter = FPS_Counter()
     
+    # Named tuple for text to print on image
+    frame_text = namedtuple('FrameText', ['name', 'value', 'color'])
+    
     frame_number = 0
     while cam.isOpened():
         # Update fps
         fps = fps_counter.get_fps()
-        print(f"FPS: {fps}")
         
         # Capture frame
         ret, frame = cam.read()
@@ -132,14 +151,22 @@ if __name__ == "__main__":
         #print(grac.mpgr.get_point_by_index(0, 0))
         
         # Draw hands and pose
-        frame = grac.draw_results(frame)   
+        grac.draw_results(frame)   
         # 3D plot of hands
         #grac.mpgr.plot_hands_3d()  
         
         # Flip image horizontally
         frame = cv2.flip(frame, 1)  
         
-        frame = grac.mpgr.draw_labels(frame)
+        #frame = grac.mpgr.draw_labels(frame)
+        
+        # Add info as text
+        rhg, lhg = grac.mpgr.get_hand_gestures()
+        text_list = []
+        text_list.append(frame_text('FPS', fps, (0,255,0)))
+        if rhg is not None: text_list.append(frame_text(None, rhg.category_name, (255,0,0)))
+        if lhg is not None: text_list.append(frame_text(None, lhg.category_name, (0,0,255)))
+        grac.add_text(frame, text_list, text_height=30)
         
         # Display frame
         cv2.imshow("Live feed", frame)            
