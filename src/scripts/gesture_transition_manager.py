@@ -15,14 +15,16 @@ class GestureTransitionManager():
         
     def gesture_change_request(self, new_gesture):
         
+        self.transition_flag = False
+                
         if new_gesture is None:
-            return
+            return False, None
         
         # Check if the new gesture is different from the old one
         # If they are the same, reset the request
         if self.old_gesture == new_gesture:
             self.candidate_gesture = None
-            return self.old_gesture
+            return self.transition_flag, self.old_gesture
         
         # If they are different, check if the request is new
         # If it is, save the time and the new gesture as candidates
@@ -34,9 +36,16 @@ class GestureTransitionManager():
         # Check how much time has passed since the start of the request and compare it with the timer
         delta_t = time.time() - self.request_time_start
         if delta_t > self.transition_timer:
+            # Register the transition to a variable and turn a flag to true
+            # Only if there is a previous gesture recorded
+            if self.old_gesture is not None:
+                self.transition_flag = True
+                self.transition = self.old_gesture + " -> " + self.candidate_gesture
+            
+            # Register the new gesture
             self.old_gesture = self.candidate_gesture
         
-        return self.old_gesture
+        return self.transition_flag, self.candidate_gesture
         
         
     

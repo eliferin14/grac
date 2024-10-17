@@ -2,6 +2,8 @@ import cv2
 import argparse
 import mediapipe as mp
 from collections import namedtuple
+import matplotlib.pyplot as plt
+import numpy as np
 
 from hand_gestures import Mediapipe_GestureRecognizer
 from pose_estimation import Mediapipe_PoseLandmarker
@@ -20,7 +22,7 @@ parser.add_argument("--pose_model_path", type=str, default="pose_landmarker_full
 parser.add_argument("-mpdc", "--min_pose_detection_confidence", type=float, default=0.5, help="min_pose_detection_confidence")
 parser.add_argument("-mppc", "--min_pose_presence_confidence", type=float, default=0.5, help="min_pose_presence_confidence")
 parser.add_argument("-mptc", "--min_pose_tracking_confidence", type=float, default=0.5, help="min_pose_tracking_confidence")
-parser.add_argument("-gtt", "--gesture_transition_timer", type=float, default=0.3, help="Timer required for a new grsture to be registered")
+parser.add_argument("-gtt", "--gesture_transition_timer", type=float, default=0.5, help="Timer required for a new grsture to be registered")
 
 
 
@@ -150,6 +152,16 @@ if __name__ == "__main__":
     
     frame_number = 0
     rhg, lhg = 0, 0
+    rhw_posList = []
+    
+    # Plot
+    rhw_record_pos_flag = False
+    rhw_path_fig = plt.figure()
+    rhw_path_ax = rhw_path_fig.add_subplot(projection='3d')
+    
+    
+    
+    # Loop 
     while cam.isOpened():
         # Update fps
         fps = fps_counter.get_fps()
@@ -177,8 +189,35 @@ if __name__ == "__main__":
         rhg, lhg = grac.mpgr.get_hand_gestures_names()
         
         # Compare the current gesture to the old gesture
-        filtered_rhg = rightGTR.gesture_change_request(rhg)
-        filtered_lhg = leftGTR.gesture_change_request(lhg)
+        rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
+        lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
+        
+        # Create two position vectors for the right hand wrist
+        rhw_pos = None
+        
+        # If a gesture transition is detected, do something
+        if rht: 
+            print(rightGTR.transition)
+            
+            if rightGTR.transition == "open -> fist":
+                rhw_record_pos_flag = True        
+                plt.cla()
+                
+            elif rightGTR.transition == "fist -> open":
+                rhw_vector = np.array([ rhw_posList[0][0] - rhw_posList[-1][0], rhw_posList[0][1] - rhw_posList[-1][1], rhw_posList[0][2] - rhw_posList[-1][2] ])
+                rhw_vector_normalized = rhw_vector / np.sqrt(np.sum(rhw_vector**2))
+                print(rhw_vector_normalized)
+                rhw_record_pos_flag = False
+                rhw_posList = []
+                
+        if rhw_record_pos_flag:
+            rhw_pos = grac.mppl.get_point_by_index(16)
+            rhw_posList.append(rhw_pos)
+            rhw_path_ax.scatter(rhw_pos[0], rhw_pos[1], rhw_pos[2], c='k')
+        
+            
+            
+        if lht: print(leftGTR.transition)
         
         # Add info as text        
         text_list = []
