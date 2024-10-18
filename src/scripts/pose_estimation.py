@@ -40,7 +40,8 @@ class Mediapipe_PoseLandmarker():
             num_poses=1, 
             min_pose_detection_confidence = min_pose_detection_confidence,
             min_pose_presence_confidence = min_pose_presence_confidence,
-            min_tracking_confidence = min_tracking_confidence
+            min_tracking_confidence = min_tracking_confidence,
+            output_segmentation_masks = False
             )
         
         # Select running mode

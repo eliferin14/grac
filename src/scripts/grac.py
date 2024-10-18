@@ -14,10 +14,12 @@ from gesture_transition_manager import GestureTransitionManager
 parser = argparse.ArgumentParser(description="Hello")
 parser.add_argument("--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
 parser.add_argument("--model_mode", type=int, default=1, help="Model running mode: 0=image, 1=video, 2=live")
+parser.add_argument("--enable_hand_model", type=bool, default=True, help="Enable hand detection")
 parser.add_argument("--hand_model_path", type=str, default="gesture_recognizer_original.task", help="Path to the hand model .task file")
 parser.add_argument("-mhdc", "--min_hand_detection_confidence", type=float, default=0.3, help="min_hand_detection_confidence")
 parser.add_argument("-mhpc", "--min_hand_presence_confidence", type=float, default=0.3, help="min_hand_presence_confidence")
 parser.add_argument("-mhtc", "--min_hand_tracking_confidence", type=float, default=0.3, help="min_hand_tracking_confidence")
+parser.add_argument("--enable_pose_model", type=bool, default=False, help="Enable pose detection")
 parser.add_argument("--pose_model_path", type=str, default="pose_landmarker_full.task", help="Path to the pose model .task file")
 parser.add_argument("-mpdc", "--min_pose_detection_confidence", type=float, default=0.5, help="min_pose_detection_confidence")
 parser.add_argument("-mppc", "--min_pose_presence_confidence", type=float, default=0.5, help="min_pose_presence_confidence")
@@ -32,7 +34,10 @@ class GRAC():
     """Wrapper class that combines the hand and pose detection models
     """    ''''''
     
-    def __init__(self, hand_model_path, pose_model_path, mode=1, mhdc=0.5, mhpc=0.5, mhtc=0.5, mpdc=0.5, mppc=0.5, mptc=0.5):
+    def __init__(self, enable_hand, enable_pose, hand_model_path, pose_model_path, mode=1, mhdc=0.5, mhpc=0.5, mhtc=0.5, mpdc=0.5, mppc=0.5, mptc=0.5):
+        
+        self.enable_hand_model = enable_hand
+        self.enable_pose_model = enable_pose
         
         # Create a gesture recognizer model
         self.mpgr = Mediapipe_GestureRecognizer(
@@ -41,7 +46,7 @@ class GRAC():
             min_hand_detection_confidence=mhdc,
             min_hand_presence_confidence=mhpc,
             min_tracking_confidence=mhtc
-            )
+            ) if self.enable_hand_model else None
         # Create a pose detector model
         self.mppl = Mediapipe_PoseLandmarker(
             model_path=pose_model_path,
@@ -49,7 +54,7 @@ class GRAC():
             min_pose_detection_confidence=mpdc,
             min_pose_presence_confidence=mppc,
             min_tracking_confidence=mptc
-        )
+            ) if self.enable_pose_model else None
         
         
         
@@ -70,10 +75,10 @@ class GRAC():
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
         
         # Detect hands
-        self.mpgr.detect_hands(mp_image, timestamp)
+        if self.mpgr is not None: self.mpgr.detect_hands(mp_image, timestamp)
         
         # Detect pose
-        self.mppl.detect_pose(mp_image, timestamp)
+        if self.mppl is not None: self.mppl.detect_pose(mp_image, timestamp)
         
         
         
@@ -82,10 +87,12 @@ class GRAC():
     def draw_results(self, frame):
         
         # Draw hands
-        frame = self.mpgr.draw_results(frame, draw_bb=False)
+        if self.mpgr is not None: 
+            frame = self.mpgr.draw_results(frame, draw_bb=False)
         
         # Draw pose
-        frame = self.mppl.draw_pose(frame)
+        if self.mppl is not None: 
+            frame = self.mppl.draw_pose(frame)
     
     
     
@@ -123,8 +130,11 @@ class GRAC():
 if __name__ == "__main__":    
     
     args = parser.parse_args()
+    print(args)
     
     grac = GRAC(
+        enable_hand=args.enable_hand_model,
+        enable_pose=args.enable_pose_model,
         hand_model_path=args.hand_model_path,
         pose_model_path=args.pose_model_path,
         mode=args.model_mode,
@@ -158,6 +168,9 @@ if __name__ == "__main__":
     rhw_record_pos_flag = False
     rhw_path_fig = plt.figure()
     rhw_path_ax = rhw_path_fig.add_subplot(projection='3d')
+    rhw_path_ax.set_xlabel("x")
+    rhw_path_ax.set_ylabel("y")
+    rhw_path_ax.set_zlabel("z")
     
     
     
@@ -202,6 +215,9 @@ if __name__ == "__main__":
             if rightGTR.transition == "open -> fist":
                 rhw_record_pos_flag = True        
                 plt.cla()
+                rhw_path_ax.set_xlabel("x")
+                rhw_path_ax.set_ylabel("y")
+                rhw_path_ax.set_zlabel("z")
                 
             elif rightGTR.transition == "fist -> open":
                 rhw_vector = np.array([ rhw_posList[0][0] - rhw_posList[-1][0], rhw_posList[0][1] - rhw_posList[-1][1], rhw_posList[0][2] - rhw_posList[-1][2] ])
@@ -214,6 +230,7 @@ if __name__ == "__main__":
             rhw_pos = grac.mppl.get_point_by_index(16)
             rhw_posList.append(rhw_pos)
             rhw_path_ax.scatter(rhw_pos[0], rhw_pos[1], rhw_pos[2], c='k')
+            rhw_path_ax.set_aspect('equal')
         
             
             

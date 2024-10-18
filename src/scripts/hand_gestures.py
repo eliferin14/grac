@@ -3,17 +3,19 @@ import numpy as np
 import mediapipe as mp
 from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 import matplotlib.pyplot as plt
 
 import logging
 logging.basicConfig(level=logging.INFO)
 
 # Some parameters for the model (default ones)
-BaseOptions = mp.tasks.BaseOptions
-GestureRecognizer = mp.tasks.vision.GestureRecognizer
-GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
-GestureRecognizerResult = mp.tasks.vision.GestureRecognizerResult
-VisionRunningMode = mp.tasks.vision.RunningMode         # I want the live feed options -> for continuous videos
+BaseOptions = python.BaseOptions
+GestureRecognizer = vision.GestureRecognizer
+GestureRecognizerOptions = vision.GestureRecognizerOptions
+GestureRecognizerResult = vision.GestureRecognizerResult
+VisionRunningMode = vision.RunningMode         # I want the live feed options -> for continuous videos
 
 # Define styles
 right_hand_drawing_specs = mp.solutions.drawing_styles.DrawingSpec( color=(255, 0, 0) )
@@ -74,7 +76,7 @@ class Mediapipe_GestureRecognizer():
         self.mode = mode
         if self.mode == 2:
             options.running_mode = VisionRunningMode.LIVE_STREAM
-            options.result_callback = self.save_result_callback
+            options.result_callback = self.draw_hand_landmarks_on_live
             self.logger.info("Live stream mode selected")
         elif self.mode == 1:
             options.running_mode = VisionRunningMode.VIDEO
@@ -97,6 +99,8 @@ class Mediapipe_GestureRecognizer():
             self.left_hand_ax.set_title("Left hand")
             self.right_hand_ax = self.hands_fig.add_subplot(122, projection='3d')
             self.right_hand_ax.set_title("Right hand")
+            
+        self.annotated_image = np.zeros((640,480,3))
     
     
     
@@ -149,6 +153,7 @@ class Mediapipe_GestureRecognizer():
         Returns:
             opencv image : processed image ready to be shown
         """        ''''''
+        if self.mode == 2: return self.annotated_image
         
         if self.results is None:
             return frame
@@ -198,6 +203,60 @@ class Mediapipe_GestureRecognizer():
                 cv2.rectangle(frame, (top_left_x, top_left_y), (top_left_x + width, top_left_y + height), color, 2)
             
         return frame
+    
+    
+  
+    def draw_hand_landmarks_on_live(self, detection_result, rgb_image, timestamp):
+        rgb_image = rgb_image.numpy_view()
+        self.annotated_image = np.copy(rgb_image)
+
+        # Loop through the detected hands to visualize.
+        for i, landmarks in enumerate(detection_result.hand_landmarks):
+            
+            print(f"{timestamp}: i")
+            
+            handedness = detection_result.handedness[i]
+            #print(f"i: {i}, handedness: {handedness[0].display_name}")
+            
+            # Copy the points to a protobuffer
+            hand_landmarks_proto = landmark_pb2.NormalizedLandmarkList()
+            hand_landmarks_proto.landmark.extend([ landmark_pb2.NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in landmarks ])
+            #print(type(hand_landmarks_proto))
+            
+            if True:    
+                # Specify the style
+                style = solutions.drawing_styles.get_default_hand_landmarks_style()
+                if handedness[0].index == 0:    # Right hand
+                    style = right_hand_drawing_specs
+                else:
+                    style = left_hand_drawing_specs
+                
+                # Draw the landmarks
+                solutions.drawing_utils.draw_landmarks(
+                        self.annotated_image,
+                        hand_landmarks_proto,
+                        solutions.hands.HAND_CONNECTIONS,
+                        style
+                    )
+            
+            # Draw the bounding box
+            if False:
+                min_x = min([landmark.x for landmark in landmarks])
+                max_x = max([landmark.x for landmark in landmarks])
+                min_y = min([landmark.y for landmark in landmarks])
+                max_y = max([landmark.y for landmark in landmarks])
+                
+                width = int((max_x - min_x) * frame.shape[1])
+                height = int((max_y - min_y) * frame.shape[0])
+                
+                top_left_x = int(min_x * frame.shape[1])
+                top_left_y = int(min_y * frame.shape[0])
+                color = (255,0,0) if handedness[0].index==0 else (0,0,255)
+                cv2.rectangle(frame, (top_left_x, top_left_y), (top_left_x + width, top_left_y + height), color, 2)
+            
+
+        #self.annotated_image = frame
+        return
                 
             
     
@@ -368,9 +427,6 @@ if __name__ == '__main__':
     cam = cv2.VideoCapture(1)
     #cam.open(2)
     assert cam.isOpened()
-    
-    cam.set(cv2.CV_CAP_PROP_FRAME_WIDTH,640);
-    cam.set(cv2.CV_CAP_PROP_FRAME_HEIGHT,480);
     
     frame_number = 0
     while cam.isOpened():
