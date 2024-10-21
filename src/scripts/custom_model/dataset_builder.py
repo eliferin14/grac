@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description="Custom gesture training")
 parser.add_argument("--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
 #parser.add_argument("--model_mode", type=int, default=1, help="Model running mode: 0=image, 1=video, 2=live")
 parser.add_argument("-N", type=int, default=10, help="Number of frames to capture")
-parser.add_argument("-T", type=float, default=0.1, help="Time interval between frames")
+parser.add_argument("-T", type=float, default=0.5, help="Time interval between frames")
 parser.add_argument("--dataset_path", type=str, default="dataset.csv", help="Dataset path")
 parser.add_argument("-g", "--gesture_name", type=str, default="none", help="Name of the gesture")
 parser.add_argument("--countdown", type=int, default=5, help="Countdown (seconds) before starting to capture")
@@ -19,7 +19,6 @@ parser.add_argument("--countdown", type=int, default=5, help="Countdown (seconds
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
-mp_holistic = mp.solutions.holistics
 
 def landmark_list_to_string(landmark_list):
     if landmark_list is None:
@@ -42,8 +41,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Open camera
-    cap = cv2.VideoCapture(args.camera_id)
-    assert cap.isOpened()
+    cam = cv2.VideoCapture(args.camera_id)
+    assert cam.isOpened()
     
     # Open dataset file
     file = open(args.dataset_path, "a")
@@ -54,8 +53,30 @@ if __name__ == "__main__":
         min_tracking_confidence=0.5,
         max_num_hands=1) as hands:
         
-        while cap.isOpened():
-            success, image = cap.read()
+        while True:
+            # Capture frame
+            ret, frame = cam.read()
+            if not ret:
+                print("Skipping frame")
+                continue 
+            
+            # Display frame
+            cv2.imshow("Live feed", frame)            
+            if cv2.waitKey(5) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+                break
+    
+        # Countdown
+        for i in range(args.countdown):
+            print(f"Countdown: {args.countdown - i}")
+            time.sleep(1)
+        
+        
+        # Loop to capture N frames
+        for i in range(args.N):
+            start_time = time.time()
+            
+            success, image = cam.read()
             if not success:
                 print("Ignoring empty camera frame.")
                 # If loading a video, use 'break' instead of 'continue'.
@@ -94,7 +115,11 @@ if __name__ == "__main__":
             # Flip the image horizontally for a selfie-view display.
             cv2.imshow('MediaPipe Hands', cv2.flip(image, 1))
             if cv2.waitKey(5) & 0xFF == ord('q'):
-                break
+                break            
             
-    cap.release()
+            end_time = time.time()
+            while end_time - start_time < args.T:
+                end_time = time.time()
+            
+    cam.release()
     file.close()
