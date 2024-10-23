@@ -4,15 +4,17 @@ import time
 from datetime import datetime #https://www.programiz.com/python-programming/datetime/strftime
 from pathlib import Path
 import mediapipe as mp
+import numpy as np
 
 # Command line arguments
 parser = argparse.ArgumentParser(description="Custom gesture training")
 parser.add_argument("--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
 #parser.add_argument("--model_mode", type=int, default=1, help="Model running mode: 0=image, 1=video, 2=live")
-parser.add_argument("-N", type=int, default=10, help="Number of frames to capture")
-parser.add_argument("-T", type=float, default=0.5, help="Time interval between frames")
+parser.add_argument("-N", type=int, default=100, help="Number of frames to capture")
+parser.add_argument("-T", type=float, default=0.3, help="Time interval between frames")
 parser.add_argument("--dataset_path", type=str, default="dataset.csv", help="Dataset path")
-parser.add_argument("-g", "--gesture_name", type=str, default="none", help="Name of the gesture")
+parser.add_argument("-gn", "--gesture_name", type=str, help="Name of the gesture")
+parser.add_argument("-gl", "--gesture_list_path", type=str, default="gesture_list.csv", help="Path to gesture list")
 parser.add_argument("--countdown", type=int, default=5, help="Countdown (seconds) before starting to capture")
 
 # Mediapipe things
@@ -46,6 +48,12 @@ if __name__ == "__main__":
     
     # Open dataset file
     file = open(args.dataset_path, "a")
+    
+    # Open gesture list
+    gesture_list = np.loadtxt(args.gesture_list_path, delimiter=',', dtype=str)
+    if args.gesture_name not in gesture_list:
+        print("Gesture name not found in the list. Correct the name or update the list")
+        exit()
     
     with mp_hands.Hands(
         model_complexity=0,
@@ -101,13 +109,13 @@ if __name__ == "__main__":
                         mp_drawing_styles.get_default_hand_landmarks_style(),
                         mp_drawing_styles.get_default_hand_connections_style())
                     
-                for hand_world_landmarks in results.multi_hand_world_landmarks:
+                for hand_world_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
                     # Convert the results to a string of coordinates
                     coord_string = landmark_list_to_string(hand_world_landmarks)
 
                     # Add the gesture name
-                    line = args.gesture_name + "," + coord_string
-                    print(line)
+                    line = handedness.classification[0].label + ',' + args.gesture_name + "," + coord_string
+                    print(f"{i}: {line}")
                     
                     # Append to file
                     file.write(line)
