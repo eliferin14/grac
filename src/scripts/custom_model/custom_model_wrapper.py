@@ -1,7 +1,11 @@
 import tensorflow as tf
 import numpy as np
-from custom_model.landmark_normalizer import normalize_landmarks
 import matplotlib.pyplot as plt
+
+if __name__ == '__main__':
+    from landmark_normalizer import normalize_landmarks
+else:    
+    from .landmark_normalizer import normalize_landmarks
 
 # Hand connections: pair of landmarks where a line is present
 connections = [
