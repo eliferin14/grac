@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from landmark_normalizer import HandLandmarkNormalizer
+#from landmark_normalizer import HandLandmarkNormalizer
+from custom_model.landmark_normalizer import HandLandmarkNormalizer
 import matplotlib.pyplot as plt
 
 # Hand connections: pair of landmarks where a line is present
@@ -19,7 +20,7 @@ class CustomGestureRecognizer():
                  model_path = "model/gesture_classifier.keras",
                  gesture_list_path = "gesture_list.csv",
                  minimum_gesture_detection_confidence = 0.5,
-                 show_plot=True
+                 show_plot=False
         ):
         
         # Load the model
@@ -112,6 +113,7 @@ class CustomGestureRecognizer():
     
     
     def get_gesture_name(self, gesture_id):
+        if gesture_id is None: return 'absent'
         return self.gesture_list[gesture_id]
     
     

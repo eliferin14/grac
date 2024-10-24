@@ -9,11 +9,15 @@ from mediapipe.python.solutions.pose import PoseLandmark
 from copy import deepcopy
 
 from fps_counter import FPS_Counter
+from custom_model.custom_model_wrapper import CustomGestureRecognizer
 from gesture_transition_manager import GestureTransitionManager
 
 # Command line arguments
 parser = argparse.ArgumentParser(description="Hello")
 parser.add_argument("--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+parser.add_argument("-grmp", "--gesture_recognizer_model_path", type=str, default="custom_model/model/gesture_classifier.keras", help="Path to the gesture recognition model")
+parser.add_argument("-glp", "--gesture_list_path", type=str, default="custom_model/gesture_list.csv", help="Path to the gesture list file")
+parser.add_argument("-mgdc", "--minimum_gesture_detection_confidence", type=float, default=0.5, help="Minimum confidence for a gesture to be accepted")
 parser.add_argument("-gtt", "--gesture_transition_timer", type=float, default=0.5, help="Timer required for a new grsture to be registered")
 
 # Holistic model solution
@@ -25,11 +29,7 @@ left_color = (0,0,255)
 rh_drawing_specs = DrawingSpec(right_color)
 lh_drawing_specs = DrawingSpec(left_color)
 
-# https://stackoverflow.com/questions/75365431/mediapipe-display-body-landmarks-only
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_pose = mp.solutions.pose
-# list of landmarks to exclude from the drawing
+# List of landmarks to exclude from the drawing
 excluded_landmarks = [
     PoseLandmark.LEFT_EYE, 
     PoseLandmark.RIGHT_EYE, 
@@ -49,15 +49,6 @@ excluded_landmarks = [
     PoseLandmark.LEFT_THUMB,
     PoseLandmark.RIGHT_THUMB
     ]
-
-custom_style = mp_drawing_styles.get_default_pose_landmarks_style()
-custom_connections = list(mp_pose.POSE_CONNECTIONS)
-for landmark in excluded_landmarks:
-    # we change the way the excluded landmarks are drawn
-    custom_style[landmark] = DrawingSpec(color=(255,255,0), thickness=None) 
-    # we remove all connections which contain these landmarks
-    custom_connections = [connection_tuple for connection_tuple in custom_connections 
-                            if landmark.value not in connection_tuple]
 body_color = (0,255,0)
 body_drawing_specs = DrawingSpec(body_color)
 
@@ -69,7 +60,7 @@ class GRAC():
     """Wrapper class that combines the hand and pose detection models
     """    ''''''
     
-    def __init__(self):
+    def __init__(self, model_path, gesture_list_path, mgdc):
         
         # Create a holistic model
         self.holistic = mp_holistic.Holistic(
@@ -78,6 +69,11 @@ class GRAC():
             )
         
         # Create the gesture recognition model
+        self.cgr = CustomGestureRecognizer(
+            model_path=model_path,
+            gesture_list_path=gesture_list_path,
+            minimum_gesture_detection_confidence=mgdc
+            )
         
         # Initialise class fields
         self.holistic_landmarks = None
@@ -106,8 +102,23 @@ class GRAC():
         
     
     
-    def recognize():
-        pass
+    def recognize(self):        
+        if self.holistic_landmarks is None:
+            return
+        
+        rhg_id = self.cgr.recognize(self.holistic_landmarks.right_hand_landmarks, 'Right')
+        self.rhg = self.cgr.get_gesture_name(rhg_id)
+        
+        lhg_id = self.cgr.recognize(self.holistic_landmarks.left_hand_landmarks, 'Left')
+        self.lhg = self.cgr.get_gesture_name(lhg_id)
+        
+        print(f"Left: {self.lhg}\tRight: {self.rhg}")
+        
+        
+        
+        
+    def get_gestures(self):
+        return self.lhg, self.rhg
         
         
         
@@ -118,7 +129,7 @@ class GRAC():
             return
         
         # Remove unwanted landmarks from the drawing process
-        # NOTE: changing the .present property may cause problems in other tasks
+        # Since a change of the properties of the landmark is required, create an independent copy of the landmark set
         filtered_landmarks = deepcopy(self.holistic_landmarks.pose_landmarks)
         for idx, landmark in enumerate(filtered_landmarks.landmark):
             if idx in excluded_landmarks:
@@ -134,6 +145,7 @@ class GRAC():
             mp.solutions.drawing_utils.draw_landmarks(frame, self.holistic_landmarks.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS, landmark_drawing_spec=lh_drawing_specs)
         if self.holistic_landmarks.right_hand_landmarks:
             mp.solutions.drawing_utils.draw_landmarks(frame, self.holistic_landmarks.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS, landmark_drawing_spec=rh_drawing_specs)
+    
     
     
     
@@ -173,7 +185,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
     
-    grac = GRAC()
+    grac = GRAC(
+        model_path=args.gesture_recognizer_model_path,
+        gesture_list_path=args.gesture_list_path,
+        mgdc=args.minimum_gesture_detection_confidence 
+    )
     
     # Open the camera live feed and process the frames
     cam = cv2.VideoCapture(args.camera_id)
@@ -209,11 +225,15 @@ if __name__ == "__main__":
         grac.detect(frame)
         
         # Recognize gesture
+        grac.recognize()
+        rhg, lhg = grac.get_gestures()        
         
-        #print(grac.mpgr.get_point_by_index(0, 0))
+        # Filter gestures
+        rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
+        lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
         
         # Draw hands and pose
-        grac.draw_results(frame)   
+        #grac.draw_results(frame)   
         # 3D plot of hands
         #grac.mpgr.plot_hands_3d()  
         
@@ -223,6 +243,8 @@ if __name__ == "__main__":
         # Add info as text        
         text_list = []
         text_list.append(frame_text('FPS', fps, (0,255,0)))
+        if rhg is not None: text_list.append(frame_text(None, filtered_rhg, right_color))
+        if lhg is not None: text_list.append(frame_text(None, filtered_lhg, left_color))
         grac.add_text(frame, text_list, row_height=30)
         
         # Display frame

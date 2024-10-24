@@ -201,7 +201,7 @@ if __name__ == "__main__":
         # Extract gestures
         rhg, lhg = grac.mpgr.get_hand_gestures_names()
         
-        # Compare the current gesture to the old gesture
+        # Filter gestures
         rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
         lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
         
