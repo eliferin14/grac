@@ -45,7 +45,7 @@ class GestureTransitionManager():
             # Register the new gesture
             self.old_gesture = self.candidate_gesture
         
-        return self.transition_flag, self.candidate_gesture
+        return self.transition_flag, self.old_gesture
         
         
     

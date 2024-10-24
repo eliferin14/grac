@@ -1,7 +1,6 @@
 import tensorflow as tf
 import numpy as np
-#from landmark_normalizer import HandLandmarkNormalizer
-from custom_model.landmark_normalizer import HandLandmarkNormalizer
+from custom_model.landmark_normalizer import normalize_landmarks
 import matplotlib.pyplot as plt
 
 # Hand connections: pair of landmarks where a line is present
@@ -14,27 +13,36 @@ connections = [
     (5, 9), (9, 13), (13, 17)
 ]
 
+
+
 class CustomGestureRecognizer():
     
     def __init__(self,
-                 model_path = "model/gesture_classifier.keras",
+                 model_path = "model/gesture_classifier.tflite",
                  gesture_list_path = "gesture_list.csv",
                  minimum_gesture_detection_confidence = 0.5,
                  show_plot=False
         ):
+        """Class that provides a simple interface for the gesture recognition NN
+
+        Args:
+            model_path (str, optional): Path to the .tflite model file. Defaults to "model/gesture_classifier.tflite".
+            gesture_list_path (str, optional): Path to the gesture list .csv file. Defaults to "gesture_list.csv".
+            minimum_gesture_detection_confidence (float, optional): Minimum confidence required for a gesture to be recognized. Defaults to 0.5.
+            show_plot (bool, optional): If true a plot of the detected hands will be produced. Defaults to False.
+        """        ''''''
         
         # Load the model
-        self.model = tf.keras.models.load_model(model_path)
+        self.interpreter = tf.lite.Interpreter(model_path)
+        self.interpreter.allocate_tensors()
+        self.input_details = self.interpreter.get_input_details()
+        self.output_details = self.interpreter.get_output_details()
         
         # Load the gesture list
         self.gesture_list = np.loadtxt(gesture_list_path, delimiter=',', dtype=str)
         
         # Set the minimum detection confidence
         self.mgdc = minimum_gesture_detection_confidence
-        # TODO: implement minimum confidence
-        
-        # Create the normalizer object
-        self.normalizer = HandLandmarkNormalizer()
         
         # Create the plot 
         self.show_plot = False
@@ -73,6 +81,7 @@ class CustomGestureRecognizer():
 
         Args:
             hand_world_landmarks (_type_): list of landmark coordinates
+            handedness (str): handedness of the detected hand. Can be 'Left' or 'Right'
         """        ''''''
         
         if hand_world_landmarks is None:
@@ -80,31 +89,30 @@ class CustomGestureRecognizer():
         
         # Convert to numpy matrix
         landmark_matrix = self.convert_to_numpy(hand_world_landmarks)
-        #print(landmark_matrix)
-        normalized_landmarks = self.normalizer(landmark_matrix, handedness)
+        
+        # Normalize landmarks
+        normalized_landmarks = normalize_landmarks(landmark_matrix, handedness)
         
         # Plot hands
         if self.show_plot:
             pass
             self.plot_hand(self.hand_raw_ax, landmark_matrix, 'b', 'k', 'Raw coordinates')
             self.plot_hand(self.hand_normalized_ax, normalized_landmarks, 'b', 'k', 'Raw coordinates')
-        
-        """ feature_vector = np.empty((0), dtype=float)
-        for landmark in hand_world_landmarks.landmark:
-            feature_vector = np.hstack( [feature_vector, [landmark.x, landmark.y, landmark.z] ] ) """
-        feature_vector = normalized_landmarks.reshape(-1)
             
-        #print(feature_vector)
-        #feature_vector = feature_vector.reshape(-1)
-        feature_vector = np.array([feature_vector])
-        #print(f"Shape of the feature vector: {feature_vector.shape}")
-        #print(feature_vector)
-        predict_result = self.model.predict(feature_vector, verbose=0)
-        #print(np.squeeze(predict_result))
+        # Prepare the data for the model
+        feature_vector = normalized_landmarks.reshape(-1)
+        feature_vector = np.float32(np.array([feature_vector]))
+        
+        # Inference
+        self.interpreter.set_tensor(self.input_details[0]['index'], feature_vector)
+        self.interpreter.invoke()
+        predict_result = self.interpreter.get_tensor(self.output_details[0]['index'])
+        
+        # Extract the most likely gesture
         gesture_id = np.argmax(np.squeeze(predict_result))
         gesture_confidence = np.max(np.squeeze(predict_result))
-        #print(f"Gesture: {gesture_id}; confidence: {gesture_confidence}")
         
+        # Chack if confidence is high enough for the gesture to be accepted
         if gesture_confidence < 0.5:
             gesture_id = 0
         
@@ -113,7 +121,15 @@ class CustomGestureRecognizer():
     
     
     def get_gesture_name(self, gesture_id):
-        if gesture_id is None: return 'absent'
+        """Translates the gesture ID into the corresponding gesture name
+
+        Args:
+            gesture_id (int): ID of the gesture
+
+        Returns:
+            str: Name of the gesture
+        """        ''''''
+        if gesture_id is None: return None
         return self.gesture_list[gesture_id]
     
     

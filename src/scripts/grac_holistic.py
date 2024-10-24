@@ -15,19 +15,20 @@ from gesture_transition_manager import GestureTransitionManager
 # Command line arguments
 parser = argparse.ArgumentParser(description="Hello")
 parser.add_argument("--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
-parser.add_argument("-grmp", "--gesture_recognizer_model_path", type=str, default="custom_model/model/gesture_classifier.keras", help="Path to the gesture recognition model")
+parser.add_argument("-grmp", "--gesture_recognizer_model_path", type=str, default="custom_model/model/gesture_classifier.tflite", help="Path to the gesture recognition model")
 parser.add_argument("-glp", "--gesture_list_path", type=str, default="custom_model/gesture_list.csv", help="Path to the gesture list file")
 parser.add_argument("-mgdc", "--minimum_gesture_detection_confidence", type=float, default=0.5, help="Minimum confidence for a gesture to be accepted")
 parser.add_argument("-gtt", "--gesture_transition_timer", type=float, default=0.5, help="Timer required for a new grsture to be registered")
+parser.add_argument("--draw_landmarks", type=bool, default=True, help="If true draw the landmarks on the output frame")
 
 # Holistic model solution
 mp_holistic = mp.solutions.holistic
 
 # Cosmetics
-right_color = (255,0,0)
-left_color = (0,0,255)
-rh_drawing_specs = DrawingSpec(right_color)
-lh_drawing_specs = DrawingSpec(left_color)
+right_color = (255,0,0) # Blue in BGR
+left_color = (0,0,255)  # Red in BGR
+rh_drawing_specs = DrawingSpec((0,0,255))   # Blue in RGB
+lh_drawing_specs = DrawingSpec((255,0,0))   # Red in RGB
 
 # List of landmarks to exclude from the drawing
 excluded_landmarks = [
@@ -57,7 +58,7 @@ body_drawing_specs = DrawingSpec(body_color)
 
 
 class GRAC():
-    """Wrapper class that combines the hand and pose detection models
+    """Wrapper class that combines holistic landmark detection and gestire recognition for hands
     """    ''''''
     
     def __init__(self, model_path, gesture_list_path, mgdc):
@@ -82,11 +83,10 @@ class GRAC():
         
         
     def detect(self, frame):
-        """Call both the hand detection and pose estimation models
+        """Call the holistic landmark detection
 
         Args:
             frame (opencv image): frame where the models will look for hands and pose
-            timestamp (int): increasing int required by VIDEO and LIVE_STREAM mode
         """        ''''''
         
         if frame is None:
@@ -103,6 +103,11 @@ class GRAC():
     
     
     def recognize(self):        
+        """Call the custom gesture recognition model
+
+        Returns:
+            [str, str]: Labels of the recognized gestures: [left, right]
+        """        ''''''
         if self.holistic_landmarks is None:
             return
         
@@ -112,19 +117,30 @@ class GRAC():
         lhg_id = self.cgr.recognize(self.holistic_landmarks.left_hand_landmarks, 'Left')
         self.lhg = self.cgr.get_gesture_name(lhg_id)
         
-        print(f"Left: {self.lhg}\tRight: {self.rhg}")
+        #print(f"Left: {self.lhg}\tRight: {self.rhg}")
         
-        
-        
-        
-    def get_gestures(self):
         return self.lhg, self.rhg
         
         
         
         
+    def get_gestures(self):
+        """Returns the last recognized gestures
+
+        Returns:
+            [str, str]: Labels of the recognized gestures: [left, right]
+        """        ''''''
+        return self.lhg, self.rhg        
+        
+        
+        
     
     def draw_results(self, frame):
+        """Draw the hand and pose landmarks in the provided frame
+
+        Args:
+            frame (opencv_image): Frame where the landmarks are drawn
+        """        ''''''
         if self.holistic_landmarks is None:
             return
         
@@ -219,7 +235,10 @@ if __name__ == "__main__":
         # Capture frame
         ret, frame = cam.read()
         if not ret:
-            continue
+            continue        
+        
+        # Flip image horizontally
+        frame = cv2.flip(frame, 1) 
         
         # Detect landmarks
         grac.detect(frame)
@@ -233,18 +252,16 @@ if __name__ == "__main__":
         lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
         
         # Draw hands and pose
-        #grac.draw_results(frame)   
+        if args.draw_landmarks:
+            grac.draw_results(frame)   
         # 3D plot of hands
         #grac.mpgr.plot_hands_3d()  
-        
-        # Flip image horizontally
-        frame = cv2.flip(frame, 1) 
         
         # Add info as text        
         text_list = []
         text_list.append(frame_text('FPS', fps, (0,255,0)))
-        if rhg is not None: text_list.append(frame_text(None, filtered_rhg, right_color))
-        if lhg is not None: text_list.append(frame_text(None, filtered_lhg, left_color))
+        if rhg is not None: text_list.append(frame_text('Right', filtered_rhg, right_color))
+        if lhg is not None: text_list.append(frame_text('Left', filtered_lhg, left_color))
         grac.add_text(frame, text_list, row_height=30)
         
         # Display frame
