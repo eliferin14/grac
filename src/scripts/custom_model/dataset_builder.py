@@ -71,7 +71,7 @@ if __name__ == "__main__":
             # Display frame
             cv2.imshow("Live feed", frame)            
             if cv2.waitKey(5) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
+                #cv2.destroyAllWindows()
                 break
     
         # Countdown
@@ -84,26 +84,27 @@ if __name__ == "__main__":
         for i in range(args.N):
             start_time = time.time()
             
-            success, image = cam.read()
+            success, frame = cam.read()
             if not success:
                 print("Ignoring empty camera frame.")
                 # If loading a video, use 'break' instead of 'continue'.
                 continue
+            frame = cv2.flip(frame, 1)
 
             # To improve performance, optionally mark the image as not writeable to
             # pass by reference.
-            image.flags.writeable = False
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            results = hands.process(image)
+            frame.flags.writeable = False
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = hands.process(frame)
 
             # Draw the hand annotations on the image.
-            image.flags.writeable = True
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            frame.flags.writeable = True
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             coord_string = None
             if results.multi_hand_landmarks:
                 for hand_landmarks in results.multi_hand_landmarks:
                     mp_drawing.draw_landmarks(
-                        image,
+                        frame,
                         hand_landmarks,
                         mp_hands.HAND_CONNECTIONS,
                         mp_drawing_styles.get_default_hand_landmarks_style(),
@@ -121,7 +122,7 @@ if __name__ == "__main__":
                     file.write(line)
                 
             # Flip the image horizontally for a selfie-view display.
-            cv2.imshow('MediaPipe Hands', cv2.flip(image, 1))
+            cv2.imshow('MediaPipe Hands', frame)
             if cv2.waitKey(5) & 0xFF == ord('q'):
                 break            
             

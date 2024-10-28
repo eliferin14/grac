@@ -183,7 +183,7 @@ if __name__ == "__main__":
     mp_drawing_styles = mp.solutions.drawing_styles
     mp_hands = mp.solutions.hands
     
-    cgr = CustomGestureRecognizer(show_plot=False)
+    cgr = CustomGestureRecognizer(show_plot=True)
     
     # For webcam input:
     cap = cv2.VideoCapture(0)
@@ -219,7 +219,7 @@ if __name__ == "__main__":
                         mp_drawing_styles.get_default_hand_landmarks_style(),
                         mp_drawing_styles.get_default_hand_connections_style())
                     
-                for hand_world_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+                for hand_world_landmarks, handedness in zip(results.multi_hand_world_landmarks, results.multi_handedness):
                     gesture_id = cgr.recognize(hand_world_landmarks, handedness.classification[0].label)
                     print(f"{handedness.classification[0].label}: {cgr.get_gesture_name(gesture_id)}")
                     
