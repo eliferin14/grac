@@ -102,6 +102,11 @@ class GRAC():
         self.labels = [line.strip() for line in labels]
         
         # Allocate the pose landmarker
+        self.pose_landmarker = mp_pose.Pose(
+            model_complexity = 0,
+            min_detection_confidence=0.5,
+            enable_segmentation = False
+        )
         
         # Initialize results to None
         self.right_hand_gesture, self.left_hand_gesture = None, None
@@ -135,6 +140,7 @@ class GRAC():
             
         else:
             self._process_hands(rgb_frame)
+            self._process_pose(rgb_frame)
             pass
             
         
@@ -198,6 +204,16 @@ class GRAC():
     
     
     def _process_pose(self, rgb_frame):
+        
+        # Reset results to None
+        self.pose_landmarks = None
+        
+        # Call the landmarker
+        results = self.pose_landmarker.process(rgb_frame)
+        self.pose_landmarks = results.pose_landmarks
+        
+        # Process the result
+        
         return
     
     
@@ -228,30 +244,32 @@ class GRAC():
         
         
     
-    def draw_results(self, frame):
+    def draw_results(self, frame, draw_hands=True, draw_pose=True):
         """Draw the hand and pose landmarks in the provided frame
 
         Args:
             frame (opencv_image): Frame where the landmarks are drawn
         """        ''''''
         
-        if self.pose_landmarks is not None:
+        if draw_pose:
+            if self.pose_landmarks is not None:
         
-            # Remove unwanted landmarks from the drawing process
-            # Since a change of the properties of the landmark is required, create an independent copy of the landmark set
-            filtered_landmarks = deepcopy(self.pose_landmarks)
-            for idx, landmark in enumerate(filtered_landmarks.landmark):
-                if idx in excluded_landmarks:
-                    landmark.presence = 0
+                # Remove unwanted landmarks from the drawing process
+                # Since a change of the properties of the landmark is required, create an independent copy of the landmark set
+                filtered_landmarks = deepcopy(self.pose_landmarks)
+                for idx, landmark in enumerate(filtered_landmarks.landmark):
+                    if idx in excluded_landmarks:
+                        landmark.presence = 0
                     
-            # Draw landmarks
-            mp.solutions.drawing_utils.draw_landmarks(frame, filtered_landmarks, mp_pose.POSE_CONNECTIONS, landmark_drawing_spec=pose_drawing_specs)
+                # Draw landmarks
+                mp.solutions.drawing_utils.draw_landmarks(frame, filtered_landmarks, mp_pose.POSE_CONNECTIONS, landmark_drawing_spec=pose_drawing_specs)
         
         # Draw hands landmarks
-        if self.left_hand_landmarks:
-            mp.solutions.drawing_utils.draw_landmarks(frame, self.left_hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_drawing_spec=lh_drawing_specs)
-        if self.right_hand_landmarks:
-            mp.solutions.drawing_utils.draw_landmarks(frame, self.right_hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_drawing_spec=rh_drawing_specs)
+        if draw_hands:
+            if self.left_hand_landmarks:
+                mp.solutions.drawing_utils.draw_landmarks(frame, self.left_hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_drawing_spec=lh_drawing_specs)
+            if self.right_hand_landmarks:
+                mp.solutions.drawing_utils.draw_landmarks(frame, self.right_hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_drawing_spec=rh_drawing_specs)
     
     
     
