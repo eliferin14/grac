@@ -126,16 +126,24 @@ class GRAC():
         
         # Convert the BGR image to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame.flags.writeable = False
         
         if use_threading:
         
             # Duplicate the frame for the two processes
         
-            # Set as write only
-        
-            # Call the two functions with different threads
+            # Create the two threads
+            hands_thread = threading.Thread(target=self._process_hands, args=(rgb_frame,))
+            pose_thread = threading.Thread(target=self._process_pose,args=(rgb_frame,))
+            
+            # Start the threads
+            hands_thread.start()
+            pose_thread.start()
         
             # Wait for both functions to return
+            hands_thread.join()
+            pose_thread.join()
+            
             pass
             
         else:
@@ -349,7 +357,7 @@ if __name__ == "__main__":
         frame = cv2.flip(frame, 1) 
         
         # Detect landmarks
-        grac.process(frame)    
+        grac.process(frame, use_threading=True)    
         rhg, lhg = grac.get_hand_gestures()
         
         # Filter gestures
@@ -358,7 +366,8 @@ if __name__ == "__main__":
         
         # Draw hands and pose
         if args.draw_landmarks:
-            grac.draw_results(frame)   
+            pass
+            #grac.draw_results(frame)   
         # 3D plot of hands
         #grac.mpgr.plot_hands_3d()  
         
