@@ -18,9 +18,9 @@ from gesture_transition_manager import GestureTransitionManager
 parser = argparse.ArgumentParser(description="Hello")
 parser.add_argument("--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
 parser.add_argument("-grmd", "--gesture_recognizer_model_directory", type=str, default="training/exported_model", help="Path to the gesture recognition model")
-parser.add_argument("-mgdc", "--minimum_gesture_detection_confidence", type=float, default=0.5, help="Minimum confidence for a gesture to be accepted")
 parser.add_argument("-gtt", "--gesture_transition_timer", type=float, default=0.5, help="Timer required for a new grsture to be registered")
-parser.add_argument("--draw_landmarks", type=bool, default=True, help="If true draw the landmarks on the output frame")
+parser.add_argument("--draw_hands", type=bool, default=True, help="If true draw the hands landmarks on the output frame")
+parser.add_argument("--draw_pose", type=bool, default=True, help="If true draw the pose landmarks on the output frame")
 
 # Hands and pose models packages
 mp_hands = mp.solutions.hands
@@ -136,8 +136,6 @@ class GRAC():
         
         if use_threading:
         
-            # Duplicate the frame for the two processes
-        
             # Create the two threads
             hands_thread = threading.Thread(target=self._process_hands, args=(rgb_frame,))
             pose_thread = threading.Thread(target=self._process_pose,args=(rgb_frame,))
@@ -151,9 +149,10 @@ class GRAC():
             pose_thread.join()
             
         else:
+            
+            # Call the two functions sequentially
             self._process_hands(rgb_frame)
             self._process_pose(rgb_frame)
-            pass
         
         
         
@@ -226,10 +225,6 @@ class GRAC():
         # Call the landmarker
         results = self.pose_landmarker.process(rgb_frame)
         self.pose_landmarks = results.pose_landmarks
-        
-        # Process the result
-        
-        return
     
     
     
@@ -349,8 +344,6 @@ if __name__ == "__main__":
     
     # Named tuple for text to print on image
     frame_text = namedtuple('FrameText', ['name', 'value', 'color'])
-    
-    frame_number = 0
     rhg, lhg = 0, 0
     rhw_posList = []
     
@@ -378,9 +371,7 @@ if __name__ == "__main__":
         lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
         
         # Draw hands and pose
-        if args.draw_landmarks:
-            pass
-            grac.draw_results(frame)   
+        grac.draw_results(frame, args.draw_hands, args.draw_pose)   
         # 3D plot of hands
         #grac.mpgr.plot_hands_3d()  
         
