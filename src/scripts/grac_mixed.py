@@ -29,8 +29,8 @@ mp_pose = mp.solutions.pose
 # Cosmetics
 right_color = (255,0,0) # Blue in BGR
 left_color = (0,0,255)  # Red in BGR
-rh_drawing_specs = DrawingSpec((0,0,255))   # Blue in RGB
-lh_drawing_specs = DrawingSpec((255,0,0))   # Red in RGB
+rh_drawing_specs = DrawingSpec(right_color)   # Blue in RGB
+lh_drawing_specs = DrawingSpec(left_color)   # Red in RGB
 
 # List of landmarks to exclude from the drawing
 excluded_landmarks = [
@@ -64,15 +64,15 @@ class GRAC():
     def __init__(self, model_directory, mgdc):
         
         # Define constants
-        self.RIGHT = 0
-        self.LEFT = 1
+        self.RIGHT = 1
+        self.LEFT = 0
         
         # Allocate the hand landmarker 
         self.hand_landmarker = mp_hands.Hands(
             model_complexity=0,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
-            max_num_hands=1
+            max_num_hands=2
         )
         
         # Extract the gesture recognizer .tflite models
@@ -105,6 +105,8 @@ class GRAC():
         
         # Initialize results to None
         self.right_hand_gesture, self.left_hand_gesture = None, None
+        self.right_hand_landmarks, self.left_hand_landmarks = None, None
+        self.pose_landmarks = None
         
         return
         
@@ -145,6 +147,10 @@ class GRAC():
         
     def _process_hands(self, rgb_frame):
         
+        # Reset outputs to None
+        self.right_hand_gesture, self.left_hand_gesture = None, None            
+        self.right_hand_landmarks, self.left_hand_landmarks = None, None
+        
         # Call the hand landmarker model
         results = self.hand_landmarker.process(rgb_frame)
         
@@ -180,12 +186,11 @@ class GRAC():
                 
                 # Save the gesture to the appropriate varaible
                 if handedness.classification[0].index == self.RIGHT:
+                    self.right_hand_landmarks = hand_landmarks
                     self.right_hand_gesture = gesture
                 else:
+                    self.left_hand_landmarks = hand_landmarks
                     self.left_hand_gesture = gesture
-                    
-        else:
-            self.right_hand_gesture, self.left_hand_gesture = None, None
         
         return self.right_hand_gesture, self.left_hand_gesture
     
@@ -194,44 +199,6 @@ class GRAC():
     
     def _process_pose(self, rgb_frame):
         return
-        
-    
-    
-    
-    def _detect_hands(self, rgb_frame):
-        
-        # Call the hand landmarker to detect hands
-        
-        # Process the results
-        
-        # Save to class fields
-        
-        return
-    
-    
-    
-    def _recognize_gestures(self, hand_landmarks, hand_world_landmarks, handedness):
-        
-        # Prepare the data for the model
-        
-        # Call the model
-        
-        # Select the most likely gesture
-        
-        return
-    
-    
-    
-    
-    def _detect_pose(self, rgb_frame):
-        
-        # Call the pose landmarker
-        
-        # Process the results
-        
-        # Save to class fields
-        
-        return 
     
     
     
@@ -267,23 +234,24 @@ class GRAC():
         Args:
             frame (opencv_image): Frame where the landmarks are drawn
         """        ''''''
-        if self.holistic_landmarks is None:
-            return
         
-        # Remove unwanted landmarks from the drawing process
-        # Since a change of the properties of the landmark is required, create an independent copy of the landmark set
-        filtered_landmarks = deepcopy(self.holistic_landmarks.pose_landmarks)
-        for idx, landmark in enumerate(filtered_landmarks.landmark):
-            if idx in excluded_landmarks:
-                landmark.presence = 0
+        if self.pose_landmarks is not None:
         
-        # Draw pose, face, and hands landmarks on the frame
-        if self.holistic_landmarks.pose_landmarks:
-            mp.solutions.drawing_utils.draw_landmarks(frame, filtered_landmarks, mp_holistic.POSE_CONNECTIONS, landmark_drawing_spec=pose_drawing_specs)
-        if self.holistic_landmarks.left_hand_landmarks:
-            mp.solutions.drawing_utils.draw_landmarks(frame, self.holistic_landmarks.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS, landmark_drawing_spec=lh_drawing_specs)
-        if self.holistic_landmarks.right_hand_landmarks:
-            mp.solutions.drawing_utils.draw_landmarks(frame, self.holistic_landmarks.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS, landmark_drawing_spec=rh_drawing_specs)
+            # Remove unwanted landmarks from the drawing process
+            # Since a change of the properties of the landmark is required, create an independent copy of the landmark set
+            filtered_landmarks = deepcopy(self.pose_landmarks)
+            for idx, landmark in enumerate(filtered_landmarks.landmark):
+                if idx in excluded_landmarks:
+                    landmark.presence = 0
+                    
+            # Draw landmarks
+            mp.solutions.drawing_utils.draw_landmarks(frame, filtered_landmarks, mp_pose.POSE_CONNECTIONS, landmark_drawing_spec=pose_drawing_specs)
+        
+        # Draw hands landmarks
+        if self.left_hand_landmarks:
+            mp.solutions.drawing_utils.draw_landmarks(frame, self.left_hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_drawing_spec=lh_drawing_specs)
+        if self.right_hand_landmarks:
+            mp.solutions.drawing_utils.draw_landmarks(frame, self.right_hand_landmarks, mp_hands.HAND_CONNECTIONS, landmark_drawing_spec=rh_drawing_specs)
     
     
     
@@ -372,8 +340,7 @@ if __name__ == "__main__":
         
         # Draw hands and pose
         if args.draw_landmarks:
-            pass
-            #grac.draw_results(frame)   
+            grac.draw_results(frame)   
         # 3D plot of hands
         #grac.mpgr.plot_hands_3d()  
         
