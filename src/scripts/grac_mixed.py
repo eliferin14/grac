@@ -60,8 +60,10 @@ pose_drawing_specs = DrawingSpec(pose_color)
 
 
 class GRAC():
+    """Gesture for Robotic Arm Control
+    """    ''''''
     
-    def __init__(self, model_directory, mgdc):
+    def __init__(self, model_directory):
         
         # Define constants
         self.RIGHT = 1
@@ -113,12 +115,16 @@ class GRAC():
         self.right_hand_landmarks, self.left_hand_landmarks = None, None
         self.pose_landmarks = None
         
-        return
-        
         
         
         
     def process(self, frame, use_threading=False):
+        """Detects hands and pose in a frame. Also recognize hand gestures
+
+        Args:
+            frame (opencv image): input image
+            use_threading (bool, optional): if true the hand detection and pose detection are run on different threads to imporve performance. Defaults to False.
+        """        ''''''
         
         if frame is None:
             self.logger.warning("Empty frame received")
@@ -144,22 +150,20 @@ class GRAC():
             hands_thread.join()
             pose_thread.join()
             
-            pass
-            
         else:
             self._process_hands(rgb_frame)
             self._process_pose(rgb_frame)
             pass
-            
-        
-        # Save results (?)
-        
-        return
         
         
         
         
     def _process_hands(self, rgb_frame):
+        """Detects hands and recognize gestures. The output of the models are stored in class variables
+
+        Args:
+            rgb_frame (opencv image): input frame in RGB format
+        """        ''''''
         
         # Reset outputs to None
         self.right_hand_gesture, self.left_hand_gesture = None, None            
@@ -198,20 +202,23 @@ class GRAC():
                 gesture_id = np.argmax(gestures_likelihood)
                 gesture = self.labels[gesture_id]
                 
-                # Save the gesture to the appropriate varaible
+                # Save the landmarks and the gesture to the appropriate varaible
                 if handedness.classification[0].index == self.RIGHT:
                     self.right_hand_landmarks = hand_landmarks
                     self.right_hand_gesture = gesture
                 else:
                     self.left_hand_landmarks = hand_landmarks
                     self.left_hand_gesture = gesture
-        
-        return self.right_hand_gesture, self.left_hand_gesture
     
     
     
     
     def _process_pose(self, rgb_frame):
+        """Detects pose landmarks. The output is stored in a class variable
+
+        Args:
+            rgb_frame (opencv image): input frame in RGB format
+        """        ''''''
         
         # Reset results to None
         self.pose_landmarks = None
@@ -231,7 +238,7 @@ class GRAC():
         """Converts the landmark list to a numpy matrix of 3d points
 
         Args:
-            hand_world_landmarks (_type_): result of the hand recognition process
+            hand_world_landmarks (_type_): result of the hand recognition process as a tensor
         """        ''''''
         hand_landmarks_matrix = np.zeros((1,21,3))
         i = 0
@@ -247,16 +254,23 @@ class GRAC():
     
     
     def get_hand_gestures(self):
+        """Returns the right and left hand gestures names
+
+        Returns:
+            str, str: right and left gesture names
+        """        ''''''
         return self.right_hand_gesture, self.left_hand_gesture
         
         
         
     
     def draw_results(self, frame, draw_hands=True, draw_pose=True):
-        """Draw the hand and pose landmarks in the provided frame
+        """Draw the detected landmarks on the provided frame
 
         Args:
-            frame (opencv_image): Frame where the landmarks are drawn
+            frame (opencv image): where to draw the landmarks
+            draw_hands (bool, optional): if true the hand landmarks are drawn. Defaults to True.
+            draw_pose (bool, optional): if true the pose landmarks are drawn. Defaults to True.
         """        ''''''
         
         if draw_pose:
@@ -320,7 +334,6 @@ if __name__ == "__main__":
     
     grac = GRAC(
         model_directory=args.gesture_recognizer_model_directory,
-        mgdc=args.minimum_gesture_detection_confidence 
     )
     
     # Open the camera live feed and process the frames
@@ -367,7 +380,7 @@ if __name__ == "__main__":
         # Draw hands and pose
         if args.draw_landmarks:
             pass
-            #grac.draw_results(frame)   
+            grac.draw_results(frame)   
         # 3D plot of hands
         #grac.mpgr.plot_hands_3d()  
         
