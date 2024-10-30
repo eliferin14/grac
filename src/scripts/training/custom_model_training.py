@@ -22,7 +22,7 @@ data = gesture_recognizer.Dataset.from_folder(
 train_data, rest_data = data.split(0.8)
 validation_data, test_data = rest_data.split(0.5)
 
-hparams = gesture_recognizer.HParams(export_dir="exported_model")
+hparams = gesture_recognizer.HParams(export_dir="exported_model", epochs=50)
 options = gesture_recognizer.GestureRecognizerOptions(hparams=hparams)
 model = gesture_recognizer.GestureRecognizer.create(
     train_data=train_data,

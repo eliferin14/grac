@@ -13,6 +13,7 @@ import zipfile
 
 from fps_counter import FPS_Counter
 from gesture_transition_manager import GestureTransitionManager
+from landmark_normalizer import normalize_landmarks
 
 # Command line arguments
 parser = argparse.ArgumentParser(description="Hello")
@@ -157,7 +158,7 @@ class GRAC():
         
         
         
-    def _process_hands(self, rgb_frame):
+    def _process_hands(self, rgb_frame, ignore_orientation=True):
         """Detects hands and recognize gestures. The output of the models are stored in class variables
 
         Args:
@@ -180,6 +181,10 @@ class GRAC():
                 hand_landmarks_tensor = self._convert_results_to_tensor(hand_landmarks)
                 hand_world_landmarks_tensor = self._convert_results_to_tensor(hand_world_landmarks)
                 handedness_tensor = np.array([[handedness.classification[0].index]]).astype(np.float32)
+                
+                # Normalize world landmarks
+                if ignore_orientation:
+                    hand_world_landmarks_tensor = normalize_landmarks(hand_world_landmarks_tensor,handedness.classification[0].label)
                 
                 # Call the gesture embedder model
                 self.gesture_embedder.set_tensor(self.gesture_embedder_input[0]['index'], hand_landmarks_tensor)

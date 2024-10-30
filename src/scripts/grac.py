@@ -93,6 +93,7 @@ class GRAC():
         # Draw pose
         if self.mppl is not None: 
             frame = self.mppl.draw_pose(frame)
+            
     
     
     
