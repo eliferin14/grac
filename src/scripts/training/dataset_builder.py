@@ -6,6 +6,7 @@ import time
 from datetime import datetime #https://www.programiz.com/python-programming/datetime/strftime
 from pathlib import Path
 import mediapipe as mp
+import math
 
 mp_hands = mp.solutions.hands
 hand_landmarker = mp_hands.Hands(
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     cam = cv2.VideoCapture(args.camera_id)
     assert cam.isOpened()
     
-    while True:
+    """ while True:
         # Capture frame
         ret, frame = cam.read()
         if not ret:
@@ -55,13 +56,30 @@ if __name__ == "__main__":
     # Countdown
     for i in range(args.countdown):
         print(f"Countdown: {args.countdown - i}")
-        time.sleep(1)
+        time.sleep(1)"""
+        
+    countdown_start_time = None
+    countdown_expired = False
+    countdown_remaining = args.countdown
+    first_iter = True
+    print("Press 'o' to start the countdown")
     
     # Loop to capture N frames
     i = 0
     while i < args.N:
         start_time = time.time()
         now = datetime.now()
+        
+        # Check the countdown
+        if countdown_start_time is not None and not countdown_expired:
+            countdown_seconds = math.floor(time.time() - countdown_start_time)
+            if args.countdown - countdown_seconds < countdown_remaining or first_iter:
+                countdown_remaining = args.countdown - countdown_seconds
+                print(countdown_remaining)
+                first_iter = False
+            
+            if countdown_remaining <= 0:
+                countdown_expired = True
         
         # Capture frame
         ret, frame = cam.read()
@@ -81,7 +99,7 @@ if __name__ == "__main__":
         results = None
         results = hand_landmarker.process(rgb_frame)   
         
-        if results.multi_hand_landmarks:
+        if countdown_expired and results.multi_hand_landmarks:
             
             for hand_landmarks in results.multi_hand_landmarks:
                 # Get all landmark x, y coordinates
@@ -123,9 +141,13 @@ if __name__ == "__main__":
                 i += 1
         
         
-        # Escape          
-        if cv2.waitKey(5) & 0xFF == ord('q'):
+        # Escape 
+        key = cv2.waitKey(5) & 0xFF
+        if key == ord('q'):
             break
+        
+        if key == ord('o'):
+            countdown_start_time = time.time()
         
         end_time = time.time()
         while end_time - start_time < args.T:

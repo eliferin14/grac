@@ -158,7 +158,7 @@ class GRAC():
         
         
         
-    def _process_hands(self, rgb_frame, ignore_orientation=True):
+    def _process_hands(self, rgb_frame, ignore_orientation=False):
         """Detects hands and recognize gestures. The output of the models are stored in class variables
 
         Args:
