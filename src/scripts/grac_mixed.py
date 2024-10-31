@@ -79,7 +79,7 @@ class GRAC():
         )
         
         # Extract the gesture recognizer .tflite models
-        with zipfile.ZipFile(model_directory+"/gesture_recognizer.task", 'r') as zip_ref:
+        with zipfile.ZipFile(model_directory+"/custom_gesture_recognizer.task", 'r') as zip_ref:
             zip_ref.extractall(model_directory)
         with zipfile.ZipFile(model_directory+"/hand_gesture_recognizer.task", 'r') as zip_ref:
             zip_ref.extractall(model_directory)

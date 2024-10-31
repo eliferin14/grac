@@ -51,5 +51,6 @@ qtcreator-*
 CATKIN_IGNORE
 
 # Ignore custom dataset
-src/scripts/training/dataset/
+src/scripts/training/my_dataset/
+src/scripts/training/reduced_dataset/
 src/scripts/training/exported_model/

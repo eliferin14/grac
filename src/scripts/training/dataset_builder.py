@@ -1,159 +1,180 @@
-# https://ai.google.dev/edge/mediapipe/solutions/customization/gesture_recognizer
+import os
+import random
+import shutil
+import tensorflow as tf
+assert tf.__version__.startswith('2')
+
+from mediapipe_model_maker import gesture_recognizer
+
+import argparse
 
 import cv2
-import argparse
-import time
-from datetime import datetime #https://www.programiz.com/python-programming/datetime/strftime
-from pathlib import Path
-import mediapipe as mp
-import math
+import numpy as np
 
-mp_hands = mp.solutions.hands
-hand_landmarker = mp_hands.Hands(
-            model_complexity=0,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-            max_num_hands=1
-        )
+def rotate_image(img, angle):
+    """Rotates an image by a given angle.
 
-# Command line arguments
-parser = argparse.ArgumentParser(description="Custom gesture training")
-parser.add_argument("--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
-#parser.add_argument("--model_mode", type=int, default=1, help="Model running mode: 0=image, 1=video, 2=live")
-parser.add_argument("-N", type=int, default=10, help="Number of frames to capture")
-parser.add_argument("-T", type=float, default=0.1, help="Time interval between frames")
-parser.add_argument("--dataset_path", type=str, default="dataset", help="Dataset path")
-parser.add_argument("-gn", "--gesture_name", type=str, default="none", help="Name of the gesture")
-parser.add_argument("--countdown", type=int, default=5, help="Countdown (seconds) before starting to capture")
+    Args:
+        img: The input image as a NumPy array.
+        angle: The rotation angle in degrees.
 
-if __name__ == "__main__":
-    
-    # Parse arguments
-    args = parser.parse_args()
-    print(args)
-    
-    # Create the directory
-    path_string = args.dataset_path + "/" + args.gesture_name + "/"
-    Path(path_string).mkdir(parents=True, exist_ok=True)
-    
-    # Open camera
-    cam = cv2.VideoCapture(args.camera_id)
-    assert cam.isOpened()
-    
-    """ while True:
-        # Capture frame
-        ret, frame = cam.read()
-        if not ret:
-            print("Skipping frame")
-            continue 
+    Returns:
+        The rotated image.
+    """
+
+    height, width = img.shape[:2]
+    rotation_matrix = cv2.getRotationMatrix2D((width/2, height/2), angle, 1)
+    rotated_image = cv2.warpAffine(img, rotation_matrix, (width, height))
+    return rotated_image   
+
+parser = argparse.ArgumentParser(description="Hello")
+parser.add_argument("-fdp", "--full_dataset_path", type=str, default='dataset', help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+parser.add_argument("-mdp", "--my_dataset_path", type=str, default='dataset', help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+parser.add_argument("-fmr", "--full_my_ratio", type=float, default=0.5, help="Fraction of the dataset coming from my dataset")
+parser.add_argument("--reduce_dataset", action='store_true', help="If True a new dataset is built")
+parser.add_argument("-rdp", "--reduced_dataset_path", type=str, default='dataset', help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+parser.add_argument('--gesture_whitelist', nargs='+', default=['none'], help='Whitelist of gestures. \'none\' is included by default')
+parser.add_argument('-mspg', '--max_samples_per_gesture', type=int, default=200, help='Max number of samples per image')
+parser.add_argument("--merge_palm_stop", action='store_true', help="If True palm and stop are considered both palm")
+parser.add_argument("--merge_two_twoup", action='store_true', help="If True two and two_up are considered both two")
+parser.add_argument("--add_random_rotation", action='store_true', help="If True the images are rotated by a random angle when copied")
+
+args = parser.parse_args()
+print(args)
+
+# Full and reduced dataset path
+fdp = args.full_dataset_path
+mdp = args.my_dataset_path
+rdp = args.reduced_dataset_path
+whitelist = args.gesture_whitelist
+
+# Calculate how many pictures to take from the full dataset and my dataset
+num_fd = int( args.max_samples_per_gesture * args.full_my_ratio )
+num_md = args.max_samples_per_gesture - num_fd
+
+# Delete the old dataset and model
+try:
+    if args.reduce_dataset:
+        shutil.rmtree(rdp)
+        print(f"Folder '{rdp}' and its contents deleted successfully.")
+except OSError as e:
+    print(f"Error: {e.strerror}")
+
+# Scan the full dataset, and copy the whitelisted gestures in their folder, and the blacklisted gestures in the none folder
+if args.reduce_dataset:
+                
+                
+    print("\nGestures found in my dataset:")
+    for folder in os.listdir(mdp):
         
-        # Display frame
-        cv2.imshow("Live feed", frame)            
-        if cv2.waitKey(5) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
-            break
-    
-    # Countdown
-    for i in range(args.countdown):
-        print(f"Countdown: {args.countdown - i}")
-        time.sleep(1)"""
-        
-    countdown_start_time = None
-    countdown_expired = False
-    countdown_remaining = args.countdown
-    first_iter = True
-    print("Press 'o' to start the countdown")
-    
-    # Loop to capture N frames
-    i = 0
-    while i < args.N:
-        start_time = time.time()
-        now = datetime.now()
-        
-        # Check the countdown
-        if countdown_start_time is not None and not countdown_expired:
-            countdown_seconds = math.floor(time.time() - countdown_start_time)
-            if args.countdown - countdown_seconds < countdown_remaining or first_iter:
-                countdown_remaining = args.countdown - countdown_seconds
-                print(countdown_remaining)
-                first_iter = False
+        mdp_gesture_path = os.path.join(mdp, folder)
+        if os.path.isdir(mdp_gesture_path):
             
-            if countdown_remaining <= 0:
-                countdown_expired = True
-        
-        # Capture frame
-        ret, frame = cam.read()
-        if not ret:
-            print("Skipping frame")
-            continue   
-        
-        # Flip image horizontally
-        frame = cv2.flip(frame, 1) 
-        
-        # Display frame
-        cv2.imshow("Live feed", frame)  
-        
-        # Detect hands
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb_frame.flags.writeable = False
-        results = None
-        results = hand_landmarker.process(rgb_frame)   
-        
-        if countdown_expired and results.multi_hand_landmarks:
-            
-            for hand_landmarks in results.multi_hand_landmarks:
-                # Get all landmark x, y coordinates
-                x_coords = [landmark.x for landmark in hand_landmarks.landmark]
-                y_coords = [landmark.y for landmark in hand_landmarks.landmark]
+            # Check if the gesture is whitelisted
+            if folder in whitelist:
+                print(f"\t{folder} -> whitelisted")            
+                rdp_gesture_path = os.path.join(rdp, folder)
+                
+            else:
+                print(f"\t{folder} -> blacklisted")            
+                rdp_gesture_path = os.path.join(rdp, 'none')
+                
+            # Check merge flags
+            if args.merge_palm_stop and folder == 'stop' and 'palm' in whitelist: 
+                print("\tMerging \'stop\' into \'palm\'")          
+                rdp_gesture_path = os.path.join(rdp, 'palm')
+                
+            if args.merge_two_twoup and folder == 'two_up' and 'two' in whitelist: 
+                print("\tMerging \'two_up\' into \'two\'")          
+                rdp_gesture_path = os.path.join(rdp, 'two')
+                
+            # Create the folder if necessary
+            if not os.path.exists(rdp_gesture_path):
+                os.makedirs(rdp_gesture_path)
 
-                # Get bounding box coordinates
-                min_x, max_x = min(x_coords), max(x_coords)
-                min_y, max_y = min(y_coords), max(y_coords)
+            # Load all filenames and shuffle
+            image_files = os.listdir(mdp_gesture_path)
+            num_images = min(num_md, len(image_files))
+            random.shuffle(image_files)
 
-                # Convert normalized coordinates to pixel values
-                image_height, image_width, _ = frame.shape
+            # Copy the desired number of files
+            for i in range(num_images):
+                source_file = os.path.join(mdp_gesture_path, image_files[i])
+                dest_file = os.path.join(rdp_gesture_path, image_files[i])
                 
-                min_x = int(min_x * image_width)
-                min_y = int(min_y * image_height)
-                max_x = int(max_x * image_width)
-                max_y = int(max_y * image_height)
+                image = cv2.imread(source_file)
                 
-                x_center = int( (min_x + max_x) / 2 )
-                y_center = int( (min_y + max_y) / 2 )
-                width = max( (max_x - min_x), (max_y - min_y) ) * 1.5
+                if args.add_random_rotation:
+                    
+                    coinflip = random.uniform(-1,1)
+                    if coinflip > 0:
                 
-                y1 = int(y_center - width/2)
-                y2 = int(y_center + width/2)
-                x1 = int(x_center - width/2)
-                x2 = int(x_center + width/2)
+                        # Generate a random angle between -90 and 90 degrees
+                        random_angle = random.uniform(-90, 90)
+
+                        # Rotate the image
+                        image = rotate_image(image, random_angle)
                 
-                if y1<0 or x1<0 or y2>image_height or x2>image_width: break
+                cv2.imwrite(dest_file, image)
                 
-                frame_crop = frame[y1:y2, x1:x2]
-        
-                # Save to selected location
-                img_name = path_string + args.gesture_name + "_" + now.strftime("%Y%m%d_%H%M%S") + "_" + str(i) + ".jpg"
-                print(img_name)
-                ret = cv2.imwrite(img_name, frame_crop)
                 
-                cv2.imshow("Cropped hand", frame_crop)   
-            
-                i += 1
-        
-        
-        # Escape 
-        key = cv2.waitKey(5) & 0xFF
-        if key == ord('q'):
-            break
-        
-        if key == ord('o'):
-            countdown_start_time = time.time()
-        
-        end_time = time.time()
-        while end_time - start_time < args.T:
-            end_time = time.time()
+                
     
-    cam.release()
-    cv2.destroyAllWindows()
-    
+    print("\nGestures found in the full dataset:")
+    for folder in os.listdir(fdp):
+        
+        fdp_gesture_path = os.path.join(fdp, folder)
+        
+        if folder not in os.listdir(rdp):
+            temp_num_fd = args.max_samples_per_gesture    
+        else:        
+            temp_num_fd = num_fd
+            
+        if os.path.isdir(fdp_gesture_path):
+            
+            # Check if the gesture is whitelisted
+            if folder in whitelist:
+                print(f"\t{folder} -> whitelisted")            
+                rdp_gesture_path = os.path.join(rdp, folder)
+                
+            else:
+                print(f"\t{folder} -> blacklisted")            
+                rdp_gesture_path = os.path.join(rdp, 'none')
+                
+            # Check merge flags
+            if args.merge_palm_stop and folder == 'stop' and 'palm' in whitelist: 
+                print("\tMerging \'stop\' into \'palm\'")          
+                rdp_gesture_path = os.path.join(rdp, 'palm')
+                
+            if args.merge_two_twoup and folder == 'two_up' and 'two' in whitelist: 
+                print("\tMerging \'two_up\' into \'two\'")          
+                rdp_gesture_path = os.path.join(rdp, 'two')
+                
+            # Create the folder if necessary
+            if not os.path.exists(rdp_gesture_path):
+                os.makedirs(rdp_gesture_path)
 
+            # Load all filenames and shuffle
+            image_files = os.listdir(fdp_gesture_path)
+            num_images = min(temp_num_fd, len(image_files))
+            random.shuffle(image_files)
+
+            # Copy the desired number of files
+            for i in range(num_images):
+                source_file = os.path.join(fdp_gesture_path, image_files[i])
+                dest_file = os.path.join(rdp_gesture_path, image_files[i])
+                
+                image = cv2.imread(source_file)
+                
+                if args.add_random_rotation:
+                    
+                    coinflip = random.uniform(-1,1)
+                    if coinflip > 0:
+                
+                        # Generate a random angle between -90 and 90 degrees
+                        random_angle = random.uniform(-90, 90)
+
+                        # Rotate the image
+                        image = rotate_image(image, random_angle)
+                
+                cv2.imwrite(dest_file, image)
