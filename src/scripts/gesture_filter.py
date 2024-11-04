@@ -1,6 +1,6 @@
 import time
 
-class GestureTransitionManager():
+class GestureFilter():
     
     def __init__(self,
                  transition_timer = 0.1

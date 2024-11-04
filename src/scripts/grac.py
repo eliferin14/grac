@@ -8,7 +8,7 @@ import numpy as np
 from hand_gestures import Mediapipe_GestureRecognizer
 from pose_estimation import Mediapipe_PoseLandmarker
 from fps_counter import FPS_Counter
-from gesture_transition_manager import GestureTransitionManager
+from scripts.gesture_filter import GestureFilter
 
 # Command line arguments
 parser = argparse.ArgumentParser(description="Hello")
@@ -155,8 +155,8 @@ if __name__ == "__main__":
     fps_counter = FPS_Counter()
     
     # Gesture managers
-    rightGTR = GestureTransitionManager(transition_timer=args.gesture_transition_timer)
-    leftGTR = GestureTransitionManager(transition_timer=args.gesture_transition_timer)
+    rightGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
+    leftGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
     
     # Named tuple for text to print on image
     frame_text = namedtuple('FrameText', ['name', 'value', 'color'])

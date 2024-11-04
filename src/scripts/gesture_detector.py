@@ -12,7 +12,7 @@ import threading
 import zipfile
 
 from fps_counter import FPS_Counter
-from gesture_transition_manager import GestureTransitionManager
+from gesture_filter import GestureFilter
 from landmark_normalizer import normalize_landmarks
 
 # Command line arguments
@@ -78,7 +78,7 @@ class GestureDetector():
     """Gesture for Robotic Arm Control
     """    ''''''
     
-    def __init__(self, model_directory):
+    def __init__(self, model_directory, transition_timer):
         
         # Define constants
         self.RIGHT = 1
@@ -130,6 +130,10 @@ class GestureDetector():
         self.right_hand_landmarks, self.left_hand_landmarks = None, None
         self.pose_landmarks = None
         self.right_hand_data, self.left_hand_data = HandData(), HandData()
+        
+        # Initialize the filters
+        self.rightGTR = GestureFilter(transition_timer=transition_timer)
+        self.leftGTR = GestureFilter(transition_timer=transition_timer)
         
         
         
@@ -225,10 +229,12 @@ class GestureDetector():
                 # Save the landmarks and the gesture to the appropriate varaible
                 if handedness.classification[0].index == self.RIGHT:
                     self.right_hand_landmarks = hand_landmarks
+                    _, gesture = self.rightGTR.gesture_change_request(gesture)
                     self.right_hand_gesture = gesture
                     self.right_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Right')
                 else:
                     self.left_hand_landmarks = hand_landmarks
+                    _, gesture = self.leftGTR.gesture_change_request(gesture)
                     self.left_hand_gesture = gesture
                     self.left_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Left')
     
@@ -302,7 +308,7 @@ class GestureDetector():
                         landmark.presence = 0
                     
                 # Draw landmarks
-                mp.solutions.drawing_utils.draw_landmarks(frame, filtered_landmarks, mp_pose.POSE_CONNECTIONS, landmark_drawing_spec=pose_drawing_specs)
+                mp.solutions.drawing_utils.draw_landmarks(frame, filtered_landmarks, mp_pose.POSE_CONNECTIONS, landmark_drawing_spec=pose_drawing_specs,connection_drawing_spec=DrawingSpec(color=(128,128,128)))
         
         # Draw hands landmarks
         if draw_hands:
@@ -352,6 +358,7 @@ if __name__ == "__main__":
     
     grac = GestureDetector(
         model_directory=args.gesture_recognizer_model_directory,
+        transition_timer=args.gesture_transition_timer
     )
     
     # Open the camera live feed and process the frames
@@ -362,8 +369,8 @@ if __name__ == "__main__":
     fps_counter = FPS_Counter()
     
     # Gesture managers
-    rightGTR = GestureTransitionManager(transition_timer=args.gesture_transition_timer)
-    leftGTR = GestureTransitionManager(transition_timer=args.gesture_transition_timer)
+    rightGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
+    leftGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
     
     # Named tuple for text to print on image
     frame_text = namedtuple('FrameText', ['name', 'value', 'color'])
@@ -391,8 +398,8 @@ if __name__ == "__main__":
         print(grac.left_hand_data)
         
         # Filter gestures
-        rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
-        lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
+        #rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
+        #lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
         
         # Draw hands and pose
         grac.draw_results(frame, args.draw_hands, args.draw_pose)   
@@ -402,8 +409,8 @@ if __name__ == "__main__":
         # Add info as text        
         text_list = []
         text_list.append(frame_text('FPS', fps, (0,255,0)))
-        if rhg is not None: text_list.append(frame_text('Right', filtered_rhg, right_color))
-        if lhg is not None: text_list.append(frame_text('Left', filtered_lhg, left_color))
+        if rhg is not None: text_list.append(frame_text('Right', rhg, right_color))
+        if lhg is not None: text_list.append(frame_text('Left', lhg, left_color))
         grac.add_text(frame, text_list, row_height=30)
         
         # Display frame

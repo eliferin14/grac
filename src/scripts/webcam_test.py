@@ -1,7 +1,13 @@
 import cv2
+import argparse
+
+parser = argparse.ArgumentParser(description="Hello")
+parser.add_argument("-id", "--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+
+args = parser.parse_args()
 
 # Open the default webcam
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(args.camera_id)
 
 while True:
     # Capture frame-by-frame

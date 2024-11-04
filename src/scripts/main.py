@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from gesture_detector import GestureDetector
 from fps_counter import FPS_Counter
-from gesture_transition_manager import GestureTransitionManager
+from gesture_filter import GestureFilter
 from gesture_interpreter import GestureInterpreter
 
 
@@ -16,7 +16,7 @@ from gesture_interpreter import GestureInterpreter
 
 # Command line arguments
 parser = argparse.ArgumentParser(description="Hello")
-parser.add_argument("--camera_id", type=int, default=0, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+parser.add_argument("-id", "--camera_id", type=int, default=3, help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
 parser.add_argument("-grmd", "--gesture_recognizer_model_directory", type=str, default="training/exported_model", help="Path to the gesture recognition model")
 parser.add_argument("-gtt", "--gesture_transition_timer", type=float, default=0.5, help="Timer required for a new grsture to be registered")
 parser.add_argument("--draw_hands", type=bool, default=True, help="If true draw the hands landmarks on the output frame")
@@ -42,6 +42,7 @@ if __name__ == "__main__":
     
     grac = GestureDetector(
         model_directory=args.gesture_recognizer_model_directory,
+        transition_timer=args.gesture_transition_timer
     )
     
     # Open the camera live feed and process the frames
@@ -52,8 +53,8 @@ if __name__ == "__main__":
     fps_counter = FPS_Counter()
     
     # Gesture managers
-    rightGTR = GestureTransitionManager(transition_timer=args.gesture_transition_timer)
-    leftGTR = GestureTransitionManager(transition_timer=args.gesture_transition_timer)
+    rightGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
+    leftGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
     
     # Gesture interpreter
     interpreter = GestureInterpreter()
@@ -83,11 +84,11 @@ if __name__ == "__main__":
         rhg, lhg = grac.get_hand_gestures()
         
         # Filter gestures
-        rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
-        lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
+        #rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
+        #lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
         
         # Call the gesture interpreter
-        interpreter.interpret(grac.right_hand_data)
+        interpreter.interpret(grac.right_hand_data, grac.left_hand_data)
         
         # Draw hands and pose
         grac.draw_results(frame, args.draw_hands, args.draw_pose)   
@@ -97,8 +98,8 @@ if __name__ == "__main__":
         # Add info as text        
         text_list = []
         text_list.append(frame_text('FPS', fps, (0,255,0)))
-        if rhg is not None: text_list.append(frame_text('Right', filtered_rhg, right_color))
-        if lhg is not None: text_list.append(frame_text('Left', filtered_lhg, left_color))
+        if rhg is not None: text_list.append(frame_text('Right', rhg, right_color))
+        if lhg is not None: text_list.append(frame_text('Left', lhg, left_color))
         grac.add_text(frame, text_list, row_height=30)
         
         # Display frame
