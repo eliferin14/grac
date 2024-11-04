@@ -60,7 +60,21 @@ pose_drawing_specs = DrawingSpec(pose_color)
 
 
 
-class GRAC():
+# Gesture dataclass
+from dataclasses import dataclass
+@dataclass
+class HandData:
+    landmarks: np.array = None
+    gesture: str = None
+    handedness: str = None
+    palm_origin: np.array = None
+    
+
+
+
+
+
+class GestureDetector():
     """Gesture for Robotic Arm Control
     """    ''''''
     
@@ -115,6 +129,7 @@ class GRAC():
         self.right_hand_gesture, self.left_hand_gesture = None, None
         self.right_hand_landmarks, self.left_hand_landmarks = None, None
         self.pose_landmarks = None
+        self.right_hand_data, self.left_hand_data = HandData(), HandData()
         
         
         
@@ -168,6 +183,7 @@ class GRAC():
         # Reset outputs to None
         self.right_hand_gesture, self.left_hand_gesture = None, None            
         self.right_hand_landmarks, self.left_hand_landmarks = None, None
+        self.right_hand_data, self.left_hand_data = HandData(), HandData()
         
         # Call the hand landmarker model
         results = self.hand_landmarker.process(rgb_frame)
@@ -210,9 +226,11 @@ class GRAC():
                 if handedness.classification[0].index == self.RIGHT:
                     self.right_hand_landmarks = hand_landmarks
                     self.right_hand_gesture = gesture
+                    self.right_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Right')
                 else:
                     self.left_hand_landmarks = hand_landmarks
                     self.left_hand_gesture = gesture
+                    self.left_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Left')
     
     
     
@@ -259,7 +277,7 @@ class GRAC():
         Returns:
             str, str: right and left gesture names
         """        ''''''
-        return self.right_hand_gesture, self.left_hand_gesture
+        return self.right_hand_data.gesture, self.left_hand_data.gesture
         
         
         
@@ -332,7 +350,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
     
-    grac = GRAC(
+    grac = GestureDetector(
         model_directory=args.gesture_recognizer_model_directory,
     )
     
@@ -370,6 +388,7 @@ if __name__ == "__main__":
         # Detect landmarks
         grac.process(frame, use_threading=True)    
         rhg, lhg = grac.get_hand_gestures()
+        print(grac.left_hand_data)
         
         # Filter gestures
         rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
