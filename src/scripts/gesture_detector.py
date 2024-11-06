@@ -123,7 +123,7 @@ def draw_reference_system(ax, length=1.0):
     ax.text(0, 0, length, 'Z', color='blue')
     
 
-def plot_bounding_cube(ax, x, y, z, corner_thickness=50):
+def get_bounding_cube(x, y, z, corner_thickness=50):
     """
     Plots the smallest cube containing all data points on the provided axis
     and marks the corners with specified thickness.
@@ -154,9 +154,9 @@ def plot_bounding_cube(ax, x, y, z, corner_thickness=50):
     mid_z = (z_min + z_max) / 2
 
     # Set the limits for the cube
-    ax.set_xlim(mid_x - max_range / 2, mid_x + max_range / 2)
-    ax.set_ylim(mid_y - max_range / 2, mid_y + max_range / 2)
-    ax.set_zlim(mid_z - max_range / 2, mid_z + max_range / 2)
+    #ax.set_xlim(mid_x - max_range / 2, mid_x + max_range / 2)
+    #ax.set_ylim(mid_y - max_range / 2, mid_y + max_range / 2)
+    #ax.set_zlim(mid_z - max_range / 2, mid_z + max_range / 2)
 
     # Create the cube's corners
     r = max_range / 2  # Half the side length of the cube
@@ -170,8 +170,9 @@ def plot_bounding_cube(ax, x, y, z, corner_thickness=50):
                         [mid_x - r, mid_y + r, mid_z + r]])
 
     # Plot the corners of the cube
-    ax.scatter(corners[:, 0], corners[:, 1], corners[:, 2], 
-               color='r', s=corner_thickness)  # 's' sets the size of the markers
+    #ax.scatter(corners[:, 0], corners[:, 1], corners[:, 2], color='r', s=corner_thickness)  # 's' sets the size of the markers
+    
+    return corners
     
 
 
@@ -223,7 +224,7 @@ def plot3D(ax, pose_landmarks, right_hand_landmarks, left_hand_landmarks):
     pose_x.append(0)
     pose_y.append(0)
     pose_z.append(0)
-    plot_bounding_cube(ax, pose_x, pose_y, pose_z, corner_thickness=1)
+    get_bounding_cube(ax, pose_x, pose_y, pose_z, corner_thickness=1)
     
     # Update the plot
     plt.draw()
@@ -351,13 +352,13 @@ class GestureDetector():
             rgb_frame (opencv image): input frame in RGB format
         """        ''''''
         
+        # Call the hand landmarker model
+        results = self.hand_landmarker.process(rgb_frame)
+        
         # Reset outputs to None
         self.right_hand_gesture, self.left_hand_gesture = None, None            
         self.right_hand_landmarks, self.left_hand_landmarks = None, None
         self.right_hand_data, self.left_hand_data = HandData(), HandData()
-        
-        # Call the hand landmarker model
-        results = self.hand_landmarker.process(rgb_frame)
         
         # Process the results
         if results.multi_hand_landmarks:
@@ -415,11 +416,13 @@ class GestureDetector():
             rgb_frame (opencv image): input frame in RGB format
         """        ''''''
         
+        # Call the landmarker
+        results = self.pose_landmarker.process(rgb_frame)
+        
         # Reset results to None
         self.pose_landmarks = None
         
-        # Call the landmarker
-        results = self.pose_landmarker.process(rgb_frame)
+        # Update results
         self.pose_landmarks = results.pose_landmarks
     
     
@@ -476,7 +479,7 @@ class GestureDetector():
                     
                 # Draw landmarks
                 mp.solutions.drawing_utils.draw_landmarks(frame, filtered_landmarks, mp_pose.POSE_CONNECTIONS, landmark_drawing_spec=pose_drawing_specs,connection_drawing_spec=DrawingSpec(color=(128,128,128)))
-        
+
         # Draw hands landmarks
         if draw_hands:
             if self.left_hand_landmarks:

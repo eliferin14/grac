@@ -1,22 +1,19 @@
 import cv2
-import argparse
-from collections import namedtuple
-import matplotlib.pyplot as plt
-import threading
-from queue import Queue, Full, Empty
 import numpy as np
-from copy import deepcopy
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
+from queue import Queue
+import threading
 import time
+import argparse
+from copy import deepcopy
+from collections import namedtuple
 
-
-from gesture_detector import GestureDetector, plot3D
+from gesture_detector import GestureDetector, get_bounding_cube
 from fps_counter import FPS_Counter
 from gesture_filter import GestureFilter
 from gesture_interpreter import GestureInterpreter
-
-
-
-
 
 
 
@@ -28,206 +25,175 @@ parser.add_argument("-grmd", "--gesture_recognizer_model_directory", type=str, d
 parser.add_argument("-gtt", "--gesture_transition_timer", type=float, default=0.5, help="Timer required for a new grsture to be registered")
 parser.add_argument("--draw_hands", type=bool, default=True, help="If true draw the hands landmarks on the output frame")
 parser.add_argument("--draw_pose", type=bool, default=True, help="If true draw the pose landmarks on the output frame")
+args = parser.parse_args()
 
 # Cosmetics
 right_color = (255,0,0) # Blue in BGR
 left_color = (0,0,255)  # Red in BGR
 
-
-
-
-
-
-
-# Parse arguments
-args = parser.parse_args()
-print(args)
-
-# Create the detector object
-detector = GestureDetector(
-    model_directory=args.gesture_recognizer_model_directory,
-    transition_timer=args.gesture_transition_timer
-)
-
-# Fps counter
-fps_counter = FPS_Counter()
-
-# Gesture interpreter
-interpreter = GestureInterpreter()
-
 # Named tuple for text to print on image
 frame_text = namedtuple('FrameText', ['name', 'value', 'color'])
-rhg, lhg = 0, 0
-rhw_posList = []
+
+
+
+
+# Various objects 
+grac = GestureDetector(
+        model_directory=args.gesture_recognizer_model_directory,
+        transition_timer=args.gesture_transition_timer
+    )
+
+rightGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
+leftGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
+
+interpreter = GestureInterpreter()
+
+capture_fps_counter = FPS_Counter()
+animation_fps_counter = FPS_Counter()
 
 
 
 
 
+# Queue to store frames
+data_queue = Queue(maxsize=1)  # This will hold one frame at a time (the latest)
 
-# Define the semaphores for the three threads
-detecting_done = threading.Event()
-drawing_done = threading.Event()
-plotting_done = threading.Event()
+# OpenCV video capture (use camera ID from command line argument)
+cam = cv2.VideoCapture(args.camera_id)
 
-# Other events
-exit_event = threading.Event()
-
-# Define the queues for data
-frame_data = Queue(maxsize=1)
-
-# Define three functions for the three threads
-def detect_wrapper():
-    print("Starting detecting thread")
+# Check if the camera opened successfully
+if not cam.isOpened():
+    print(f"Error: Couldn't open video device {args.camera_id}.")
+    exit()
     
-    # Open the camera live feed and process the frames
-    cam = cv2.VideoCapture(args.camera_id)
-    assert cam.isOpened()
     
-    # Loop until exit signal is sent
-    first_iter = True
-    while not exit_event.is_set():
+    
+    
+
+# Create a Matplotlib figure and axis
+fig, _ = plt.subplots(figsize=(15,7))
+frame_ax = fig.add_subplot(121)
+plot_ax = fig.add_subplot(122, projection='3d')
+frame_ax.axis('off')
+
+# Initialize the image object for Matplotlib (empty initially)
+ret, frame = cam.read()
+if ret:
+    height, width, _ = frame.shape
+    frame_ax.set_xlim(0, width)
+    frame_ax.set_ylim(height, 0)
+else:
+    print("Error: Couldn't read frame.")
+    exit()
+
+# Initialize image
+im = frame_ax.imshow(np.zeros((height, width, 3), dtype=np.uint8))
+
+# Initialize 3d plot stuff
+pose_lines = plot_ax.add_collection3d(Line3DCollection([], colors='gray'))
+pose_scatter = plot_ax.scatter([], [], [], c='g', marker='o')
+cube_scatter = plot_ax.scatter([], [], [], c='g', marker='o', s=1)
+
+
+
+
+
+
+
+# Function to capture and process frames continuously in a separate thread
+def capture_frames():
+    global cam, data_queue, grac, rightGTR, leftGTR, interpreter, capture_fps_counter
+    
+    # The loop is killed automatically when the main thread terminates
+    while True:
         
-        # Wait for the other threads to be done
-        if not first_iter:
-            #drawing_done.wait()
-            #plotting_done.wait()
-            pass
-        else: 
-            first_iter = False
+        # Update fps
+        capture_fps = capture_fps_counter.get_fps()
         
-        # Reset the detecting event
-        detecting_done.clear()
-        print("Detecting...")
-        
-        # Capture
+        # Capture the frame and flip
         ret, frame = cam.read()
-        # Process
-        frame = cv2.flip(frame, 1)
-        detector.process(frame, use_threading=True)
-        # Push data to the queues
-        frame_data.put(frame)
-    
-        # Signal to others that detection is done
-        detecting_done.set()
+        if not ret: continue
+        frame = cv2.flip(frame, 1)      
         
-    # Release camera
-    cam.release()
+        # Detect landmarks and gestures
+        grac.process(frame, use_threading=True)      
+        rhg, lhg = grac.get_hand_gestures()
+        
+        # Build the data object
+        data = {
+            'frame': deepcopy(frame),
+            'capture_fps': capture_fps,
+            'rhg': rhg,
+            'lhg': lhg,
+            'pose_lms': grac.pose_landmarks
+        }
 
+        # If the queue has not been emptied by the animator, flush it 
+        if data_queue.full():
+            data_queue.get()
+            
+        # Update the queue
+        data_queue.put(data)
+            
+            
+            
+            
 
-def draw_wrapper():
+# Function to update the animation with the latest frame from the queue
+def update(f):
+    global im, data_queue, animation_fps_counter, grac, pose_scatter, pose_lines, cube_scatter
     
-    print("Starting drawing thread")
-    
-    # Loop until exit signal is sent
-    while not exit_event.is_set():
+    if not data_queue.empty():
         
-        # Wait for the detection to be completed
-        detecting_done.wait()
+        # Update fps
+        animation_fps = animation_fps_counter.get_fps()
         
-        # Reset the drawing flag
-        drawing_done.clear()
-        print("Drawing...")
+        # Extract data 
+        data = data_queue.get()
+        frame = data['frame']
+        rhg = data['rhg']
+        lhg = data['lhg']
+        capture_fps = data['capture_fps']
         
-        # Extract the frame from the queue
-        frame = frame_data.get()
-        
-        # Draw the frame on the screen
-        cv2.imshow("Live stream", frame)
-        
-        # If 'q' is pressed, signal to everyone to exit
-        if cv2.waitKey(5) & 0xFF == ord('q'):
-            exit_event.set()
-    
-        # Signal to others that the drawing is done
-        drawing_done.set()
-        
-        
-    # Close all windows
-    cv2.destroyAllWindows()
+        # Draw stuff
+        grac.draw_results(frame, args.draw_hands, args.draw_pose)
 
-
-
-def plot_wrapper():
-    
-    # Create the plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    plt.show(block=False)
-    #plt.show()
-    
-    # Main loop 
-    while not exit_event.is_set():
+        # Add animation FPS text under the capture FPS text
         
-        # Wait for the detection to be completed
-        detecting_done.wait()
-        
-        # Reset the plotting flag
-        plotting_done.clear()
-        print("Plotting...")
-        time.sleep(0.5)
-    
-        # Signal to others that the plottingis done
-        plotting_done.set()
-        
-
-
-def draw_and_plot():
-    
-    print("Draw and plot starting")
-    
-    # Create the plot
-    fig = plt.figure()
-    frame_ax = fig.add_subplot(121)
-    plot_ax = fig.add_subplot(122, projection='3d')
-    plt.show(block=False)
-    
-    while not exit_event.is_set():
-        
-        # Wait for the detection to be completed
-        #detecting_done.wait()
-        
-        # Reset the plotting flag
-        plotting_done.clear()
-        print("Plotting...")
-        
-        # Extract the frame from the queue
-        frame = frame_data.get()
-        
-        # Draw on the frame
+        # Add info as text        
+        text_list = []
+        text_list.append(frame_text('Capture FPS', capture_fps, (0,255,0)))
+        text_list.append(frame_text('Animation FPS', animation_fps, (0,255,0)))
+        if rhg is not None: text_list.append(frame_text('Right', rhg, right_color))
+        if lhg is not None: text_list.append(frame_text('Left', lhg, left_color))
+        grac.add_text(frame, text_list, row_height=30)
+        #cv2.putText(frame, f'Animation FPS: {animation_fps:.2f}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
         
         # Convert to RGB
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        # Draw the frame on the figure
-        frame_ax.imshow(frame_rgb)
+        # Update the image with the new frame
+        im.set_data(frame_rgb)  
         
         
-        # Draw stuff
-        plt.draw()
-        plt.pause(0.01)
         
-        # Signal to others that the plottingis done
-        plotting_done.set()
+        
+        # Get landmark coordinates from the detector
+        pose_lms = data['pose_lms'].landmark
+        pose_x = [lm.x for lm in pose_lms]
+        pose_y = [lm.y for lm in pose_lms]
+        pose_z = [lm.z for lm in pose_lms]
+        
+        # Get cube
+        corners = get_bounding_cube(pose_x, pose_y, pose_z, 1)
+        
+        # Update data        
+        #pose_scatter.set_data(pose_x[11:], pose_y[11:])
+        #pose_scatter.set_3d_properties(pose_z[11:])
+        pose_scatter._offsets3d = (pose_x[11:], pose_y[11:], pose_z[11:])
+        cube_scatter._offsets3d = (corners[:, 0], corners[:, 1], corners[:, 2])
 
-
-
-# Define the threads
-detect_thread = threading.Thread(target=detect_wrapper, daemon=True)
-draw_thread = threading.Thread(target=draw_wrapper, daemon=True)
-# The plotting happens in the main thread
-
-
-
-# Start the threads
-detect_thread.start()
-#draw_thread.start()
-draw_and_plot()
-
-
-# Wait
-detect_thread.join()
-#draw_thread.join()
+    return [im, pose_lines, pose_scatter, cube_scatter]
 
 
 
@@ -239,53 +205,15 @@ detect_thread.join()
 
 
 
+# Start the frame capture loop in a separate thread
+capture_thread = threading.Thread(target=capture_frames, daemon=True)
+capture_thread.start()
 
+# Create the animation (will call the update function periodically)
+ani = FuncAnimation(fig, update, interval=5, blit=False)
 
+# Show the animation
+plt.show()
 
-
-""" 
-# Loop 
-while cam.isOpened():
-    
-    # Update fps
-    fps = fps_counter.get_fps()
-    
-    # Capture frame
-    ret, frame = cam.read()
-    if not ret:
-        continue        
-    
-    # Flip image horizontally
-    frame = cv2.flip(frame, 1) 
-    
-    # Detect landmarks
-    detector.process(frame, use_threading=True)    
-    rhg, lhg = detector.get_hand_gestures()
-    
-    # Call the gesture interpreter
-    interpreter.interpret(detector.right_hand_data, detector.left_hand_data)
-    
-    # Draw plot
-    #plot3D(ax, detector.pose_landmarks, detector.right_hand_data.landmarks, detector.left_hand_data.landmarks)
-    
-    # Draw hands and pose
-    detector.draw_results(frame, args.draw_hands, args.draw_pose)   
-    # 3D plot of hands
-    #grac.mpgr.plot_hands_3d()  
-    
-    # Add info as text        
-    text_list = []
-    text_list.append(frame_text('FPS', fps, (0,255,0)))
-    if rhg is not None: text_list.append(frame_text('Right', rhg, right_color))
-    if lhg is not None: text_list.append(frame_text('Left', lhg, left_color))
-    detector.add_text(frame, text_list, row_height=30)
-    
-    
-    # Display frame
-    cv2.imshow("Live feed", frame)            
-    if cv2.waitKey(5) & 0xFF == ord('q'):
-        break
-    
-# Release the camera
+# Release the video capture when done
 cam.release()
-cv2.destroyAllWindows() """
