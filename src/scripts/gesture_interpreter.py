@@ -35,7 +35,7 @@ class GestureInterpreter():
             print("Error: handedness is not \'Right\' nor \'Left\'")
             exit()
             
-        print(list(self.left_hand_sequence))
-        print(f"Right: ")
+        #print(list(self.left_hand_sequence))
+        #print(f"Right: ")
         
         

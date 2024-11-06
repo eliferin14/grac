@@ -69,6 +69,173 @@ class HandData:
     handedness: str = None
     palm_origin: np.array = None
     
+# Pose connections
+pose_connections = [
+    (11, 12),  # Shoulders
+    (11, 13),  # Left shoulder to left elbow
+    (12, 14),  # Right shoulder to right elbow
+    (13, 15),  # Left elbow to left wrist
+    (14, 16),  # Right elbow to right wrist
+    (15, 17),  # Left wrist to left pinky
+    (15, 19),  # Left wrist to left index
+    (15, 21),  # Left wrist to left thumb
+    (16, 18),  # Right wrist to right pinky
+    (16, 20),  # Right wrist to right index
+    (16, 22),  # Right wrist to right thumb
+    (11, 23),  # Left shoulder to left hip
+    (12, 24),  # Right shoulder to right hip
+    (23, 25),  # Left hip to left knee
+    (24, 26),  # Right hip to right knee
+    (25, 27),  # Left knee to left ankle
+    (26, 28),  # Right knee to right ankle
+    (27, 29),  # Left ankle to left heel
+    (28, 30),  # Right ankle to right heel
+    (29, 31),  # Left heel to left foot index
+    (30, 32),  # Right heel to right foot index
+]
+    
+    
+    
+    
+    
+    
+# 3D plotting function
+def draw_reference_system(ax, length=1.0):
+    """
+    Draws the base reference system (x, y, z axes) as arrows in a 3D Matplotlib plot.
+    
+    Parameters:
+        ax (matplotlib.axes._subplots.Axes3DSubplot): The 3D axis to draw on.
+        length (float): Length of the arrows to draw for each axis.
+    """
+    # Draw x-axis arrow in red
+    ax.quiver(0, 0, 0, length, 0, 0, color='red', arrow_length_ratio=0.1)
+    
+    # Draw y-axis arrow in green
+    ax.quiver(0, 0, 0, 0, length, 0, color='green', arrow_length_ratio=0.1)
+    
+    # Draw z-axis arrow in blue
+    ax.quiver(0, 0, 0, 0, 0, length, color='blue', arrow_length_ratio=0.1)
+    
+    # Optionally, add labels for each axis
+    ax.text(length, 0, 0, 'X', color='red')
+    ax.text(0, length, 0, 'Y', color='green')
+    ax.text(0, 0, length, 'Z', color='blue')
+    
+
+def plot_bounding_cube(ax, x, y, z, corner_thickness=50):
+    """
+    Plots the smallest cube containing all data points on the provided axis
+    and marks the corners with specified thickness.
+
+    Parameters:
+    ax: matplotlib.axes.Axes3D
+        The 3D axis on which to plot the cube.
+    x: array-like
+        The x-coordinates of the points.
+    y: array-like
+        The y-coordinates of the points.
+    z: array-like
+        The z-coordinates of the points.
+    corner_thickness: int
+        The thickness of the corners' scatter plot.
+    """
+    # Calculate the minimum and maximum values for x, y, and z
+    x_min, x_max = np.min(x), np.max(x)
+    y_min, y_max = np.min(y), np.max(y)
+    z_min, z_max = np.min(z), np.max(z)
+
+    # Determine the range and the size of the cube
+    max_range = max(x_max - x_min, y_max - y_min, z_max - z_min)
+    
+    # Calculate the midpoints
+    mid_x = (x_min + x_max) / 2
+    mid_y = (y_min + y_max) / 2
+    mid_z = (z_min + z_max) / 2
+
+    # Set the limits for the cube
+    ax.set_xlim(mid_x - max_range / 2, mid_x + max_range / 2)
+    ax.set_ylim(mid_y - max_range / 2, mid_y + max_range / 2)
+    ax.set_zlim(mid_z - max_range / 2, mid_z + max_range / 2)
+
+    # Create the cube's corners
+    r = max_range / 2  # Half the side length of the cube
+    corners = np.array([[mid_x - r, mid_y - r, mid_z - r],
+                        [mid_x + r, mid_y - r, mid_z - r],
+                        [mid_x + r, mid_y + r, mid_z - r],
+                        [mid_x - r, mid_y + r, mid_z - r],
+                        [mid_x - r, mid_y - r, mid_z + r],
+                        [mid_x + r, mid_y - r, mid_z + r],
+                        [mid_x + r, mid_y + r, mid_z + r],
+                        [mid_x - r, mid_y + r, mid_z + r]])
+
+    # Plot the corners of the cube
+    ax.scatter(corners[:, 0], corners[:, 1], corners[:, 2], 
+               color='r', s=corner_thickness)  # 's' sets the size of the markers
+    
+
+
+def draw_pose_connections(ax, x, y, z):
+    """
+    Draws connections between body pose landmarks in 3D on the provided axis.
+    
+    Parameters:
+    ax: matplotlib.axes.Axes3D
+        The 3D axis on which to draw the connections.
+    x: array-like
+        The x-coordinates of the landmarks.
+    y: array-like
+        The y-coordinates of the landmarks.
+    z: array-like
+        The z-coordinates of the landmarks.
+    """
+    # Draw connections
+    for start, end in pose_connections:
+        ax.plot([x[start], x[end]], 
+                [y[start], y[end]], 
+                [z[start], z[end]], 
+                color='k',
+               )  # You can change the color as needed
+
+
+    
+    
+def plot3D(ax, pose_landmarks, right_hand_landmarks, left_hand_landmarks):
+    
+    #print("Plotting function")
+    
+    # Clear plot
+    ax.cla()
+    
+    # Plot the reference system
+    draw_reference_system(ax)
+    
+    # Plot the pose landmarks
+    if pose_landmarks:
+        pose_x = [lm.x for lm in pose_landmarks.landmark]
+        pose_y = [lm.y for lm in pose_landmarks.landmark]
+        pose_z = [lm.z for lm in pose_landmarks.landmark]
+        draw_pose_connections(ax, pose_x, pose_y, pose_z)
+        ax.scatter(pose_x[11:], pose_y[11:], pose_z[11:], c='g', marker='o')
+    
+    
+    # Plot bounding cube
+    pose_x.append(0)
+    pose_y.append(0)
+    pose_z.append(0)
+    plot_bounding_cube(ax, pose_x, pose_y, pose_z, corner_thickness=1)
+    
+    # Update the plot
+    plt.draw()
+    
+    return
+
+
+
+
+
+    
+    
 
 
 
@@ -368,10 +535,6 @@ if __name__ == "__main__":
     # Fps counter
     fps_counter = FPS_Counter()
     
-    # Gesture managers
-    rightGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
-    leftGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
-    
     # Named tuple for text to print on image
     frame_text = namedtuple('FrameText', ['name', 'value', 'color'])
     rhg, lhg = 0, 0
@@ -396,10 +559,6 @@ if __name__ == "__main__":
         grac.process(frame, use_threading=True)    
         rhg, lhg = grac.get_hand_gestures()
         print(grac.left_hand_data)
-        
-        # Filter gestures
-        #rht, filtered_rhg = rightGTR.gesture_change_request(rhg)
-        #lht, filtered_lhg = leftGTR.gesture_change_request(lhg)
         
         # Draw hands and pose
         grac.draw_results(frame, args.draw_hands, args.draw_pose)   
