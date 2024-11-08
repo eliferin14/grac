@@ -69,8 +69,7 @@ class GestureInterpreter():
         # Do something depending on the transition
         
         if left_tid == self.get_transition_id('palm', 'fist'): 
-            self.left_p1 = [ pose_landmarks.landmark[0].x, pose_landmarks.landmark[0].y, pose_landmarks.landmark[0].z ]
-            self.left_p1 = get_landmark_by_id(pose_landmarks, LEFT_WRIST)
+            self.left_p1 = pose_landmarks[LEFT_WRIST]
             print(f"palm -> fist; {self.left_p1}")
             
         

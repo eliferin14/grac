@@ -10,7 +10,7 @@ import argparse
 from copy import deepcopy
 from collections import namedtuple
 
-from gesture_detector import GestureDetector, get_bounding_cube
+from gesture_detector import GestureDetector, get_bounding_cube, pose_connections
 from fps_counter import FPS_Counter
 from gesture_filter import GestureFilter
 from gesture_interpreter import GestureInterpreter
@@ -89,8 +89,15 @@ else:
 # Initialize image
 im = frame_ax.imshow(np.zeros((height, width, 3), dtype=np.uint8))
 
+
+# Set title and labels
+plot_ax.set_xlabel('x')
+plot_ax.set_ylabel('y')
+plot_ax.set_zlabel('z')
+
 # Initialize 3d plot stuff
-pose_lines = plot_ax.add_collection3d(Line3DCollection([], colors='gray'))
+line_collection = Line3DCollection([], colors='gray')
+pose_lines = plot_ax.add_collection3d(line_collection)
 pose_scatter = plot_ax.scatter([], [], [], c='g', marker='o')
 cube_scatter = plot_ax.scatter([], [], [], c='g', marker='o', s=1)
 
@@ -182,13 +189,22 @@ def update(f):
         
         
         # Get landmark coordinates from the detector
-        pose_lms = data['pose_lms'].landmark
-        pose_x = [lm.x for lm in pose_lms]
-        pose_y = [lm.y for lm in pose_lms]
-        pose_z = [lm.z for lm in pose_lms]
+        pose_lms = data['pose_lms']
+        pose_x = pose_lms[:,0]
+        pose_y = pose_lms[:,1]
+        pose_z = pose_lms[:,2]
         
         # Get cube
         corners = get_bounding_cube(pose_x, pose_y, pose_z, 1)
+        
+        # Create the collection of lines
+        lines = []
+        for start, end in pose_connections:
+            lines.append([
+                [pose_x[start], pose_y[start], pose_z[start]],
+                [pose_x[end], pose_y[end], pose_z[end]]
+            ])
+        line_collection.set_segments(lines)
         
         # Update data        
         #pose_scatter.set_data(pose_x[11:], pose_y[11:])
@@ -196,7 +212,7 @@ def update(f):
         pose_scatter._offsets3d = (pose_x[11:], pose_y[11:], pose_z[11:])
         cube_scatter._offsets3d = (corners[:, 0], corners[:, 1], corners[:, 2])
 
-    return [im, pose_lines, pose_scatter, cube_scatter]
+    return [im, pose_lines, pose_scatter, cube_scatter, line_collection]
 
 
 

@@ -430,7 +430,8 @@ class GestureDetector():
         self.pose_landmarks = None
         
         # Update results
-        self.pose_landmarks = results.pose_landmarks
+        self.pose_landmarks_raw = results.pose_landmarks
+        self.pose_landmarks = self._convert_results_to_matrix(results.pose_landmarks)
     
     
     
@@ -441,7 +442,8 @@ class GestureDetector():
         Args:
             hand_world_landmarks (_type_): result of the hand recognition process as a tensor
         """        ''''''
-        hand_landmarks_matrix = np.zeros((1,21,3))
+        num_landmarks = len(landmarks.landmark)
+        hand_landmarks_matrix = np.zeros((1,num_landmarks,3))
         i = 0
         for landmark in landmarks.landmark:
             hand_landmarks_matrix[0,i,0] = landmark.x
@@ -450,6 +452,9 @@ class GestureDetector():
             i+=1
             
         return hand_landmarks_matrix.astype(np.float32)  
+    
+    def _convert_results_to_matrix(self, landmarks):
+        return self._convert_results_to_tensor(landmarks)[0]
     
     
     
@@ -483,7 +488,7 @@ class GestureDetector():
         
                 # Remove unwanted landmarks from the drawing process
                 # Since a change of the properties of the landmark is required, create an independent copy of the landmark set
-                filtered_landmarks = deepcopy(self.pose_landmarks)
+                filtered_landmarks = deepcopy(self.pose_landmarks_raw)
                 for idx, landmark in enumerate(filtered_landmarks.landmark):
                     if idx in excluded_landmarks:
                         landmark.presence = 0
