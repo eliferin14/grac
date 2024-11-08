@@ -38,7 +38,7 @@ frame_text = namedtuple('FrameText', ['name', 'value', 'color'])
 
 
 # Various objects 
-grac = GestureDetector(
+detector = GestureDetector(
         model_directory=args.gesture_recognizer_model_directory,
         transition_timer=args.gesture_transition_timer
     )
@@ -46,7 +46,7 @@ grac = GestureDetector(
 rightGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
 leftGTR = GestureFilter(transition_timer=args.gesture_transition_timer)
 
-interpreter = GestureInterpreter()
+interpreter = GestureInterpreter(detector.labels_path)
 
 capture_fps_counter = FPS_Counter()
 animation_fps_counter = FPS_Counter()
@@ -102,7 +102,7 @@ cube_scatter = plot_ax.scatter([], [], [], c='g', marker='o', s=1)
 
 # Function to capture and process frames continuously in a separate thread
 def capture_frames():
-    global cam, data_queue, grac, rightGTR, leftGTR, interpreter, capture_fps_counter
+    global cam, data_queue, detector, rightGTR, leftGTR, interpreter, capture_fps_counter
     
     # The loop is killed automatically when the main thread terminates
     while True:
@@ -116,8 +116,11 @@ def capture_frames():
         frame = cv2.flip(frame, 1)      
         
         # Detect landmarks and gestures
-        grac.process(frame, use_threading=True)      
-        rhg, lhg = grac.get_hand_gestures()
+        detector.process(frame, use_threading=True)      
+        rhg, lhg = detector.get_hand_gestures()
+        
+        # Interpret gestures
+        interpreter.interpret(detector.right_hand_data, detector.left_hand_data, detector.pose_landmarks)
         
         # Build the data object
         data = {
@@ -125,7 +128,7 @@ def capture_frames():
             'capture_fps': capture_fps,
             'rhg': rhg,
             'lhg': lhg,
-            'pose_lms': grac.pose_landmarks
+            'pose_lms': detector.pose_landmarks
         }
 
         # If the queue has not been emptied by the animator, flush it 
@@ -141,7 +144,7 @@ def capture_frames():
 
 # Function to update the animation with the latest frame from the queue
 def update(f):
-    global im, data_queue, animation_fps_counter, grac, pose_scatter, pose_lines, cube_scatter
+    global im, data_queue, animation_fps_counter, detector, pose_scatter, pose_lines, cube_scatter
     
     if not data_queue.empty():
         
@@ -156,7 +159,7 @@ def update(f):
         capture_fps = data['capture_fps']
         
         # Draw stuff
-        grac.draw_results(frame, args.draw_hands, args.draw_pose)
+        detector.draw_results(frame, args.draw_hands, args.draw_pose)
 
         # Add animation FPS text under the capture FPS text
         
@@ -166,7 +169,7 @@ def update(f):
         text_list.append(frame_text('Animation FPS', animation_fps, (0,255,0)))
         if rhg is not None: text_list.append(frame_text('Right', rhg, right_color))
         if lhg is not None: text_list.append(frame_text('Left', lhg, left_color))
-        grac.add_text(frame, text_list, row_height=30)
+        detector.add_text(frame, text_list, row_height=30)
         #cv2.putText(frame, f'Animation FPS: {animation_fps:.2f}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
         
         # Convert to RGB
@@ -210,7 +213,16 @@ capture_thread = threading.Thread(target=capture_frames, daemon=True)
 capture_thread.start()
 
 # Create the animation (will call the update function periodically)
-ani = FuncAnimation(fig, update, interval=5, blit=False)
+ani = FuncAnimation(fig, update, interval=100, blit=False)
+
+# Define a key press event to stop the animation
+def on_key(event):
+    if event.key == 'q':  # Close when 'q' is pressed
+        ani.event_source.stop()  # Stop the animation
+        plt.close(fig)           # Close the figure window
+
+# Connect the event to the figure
+fig.canvas.mpl_connect('key_press_event', on_key)
 
 # Show the animation
 plt.show()

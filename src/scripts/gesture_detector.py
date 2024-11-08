@@ -93,6 +93,13 @@ pose_connections = [
     (29, 31),  # Left heel to left foot index
     (30, 32),  # Right heel to right foot index
 ]
+
+
+def get_landmark_by_id(landmark_list, landmark_id):
+    if landmark_list:
+        return np.array( [landmark_list.landmark[landmark_id].x, 
+                            landmark_list.landmark[landmark_id].y, 
+                            landmark_list.landmark[landmark_id].z, ])
     
     
     
@@ -221,9 +228,9 @@ def plot3D(ax, pose_landmarks, right_hand_landmarks, left_hand_landmarks):
     
     
     # Plot bounding cube
-    pose_x.append(0)
-    pose_y.append(0)
-    pose_z.append(0)
+    #pose_x.append(0)
+    #pose_y.append(0)
+    #pose_z.append(0)
     get_bounding_cube(ax, pose_x, pose_y, pose_z, corner_thickness=1)
     
     # Update the plot
@@ -281,8 +288,8 @@ class GestureDetector():
         self.gesture_classifier.allocate_tensors()
         
         # Load the labels
-        labels_path = model_directory+'/labels.txt'
-        file = open(labels_path, 'r')
+        self.labels_path = model_directory+'/labels.txt'
+        file = open(self.labels_path, 'r')
         labels = file.readlines()
         self.labels = [line.strip() for line in labels]
         
@@ -454,6 +461,10 @@ class GestureDetector():
             str, str: right and left gesture names
         """        ''''''
         return self.right_hand_data.gesture, self.left_hand_data.gesture
+    
+    
+    
+    
         
         
         
