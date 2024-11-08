@@ -429,9 +429,21 @@ class GestureDetector():
         # Reset results to None
         self.pose_landmarks = None
         
-        # Update results
+        # Save raw results for drawing
         self.pose_landmarks_raw = results.pose_landmarks
-        self.pose_landmarks = self._convert_results_to_matrix(results.pose_landmarks)
+        
+        # Rotate to have a standin figure
+        R = np.array([
+            [1, 0, 0],
+            [0, 0, 1],
+            [0, -1, 0]
+        ])
+        rotated_landmarks = self._convert_results_to_matrix(results.pose_landmarks) @ R.T
+        
+        # Translate
+        origin = (rotated_landmarks[11] + rotated_landmarks[12]) / 2
+        rotated_landmarks -= origin
+        self.pose_landmarks = rotated_landmarks
     
     
     

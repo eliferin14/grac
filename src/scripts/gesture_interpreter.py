@@ -46,6 +46,9 @@ class GestureInterpreter():
                 transition_id += 1
                 
         #for (state_from, state_to), identifier in self.transitions.items(): print(f"{state_from} -> {state_to}: {identifier}")
+        
+        self.left_p1 = None
+        self.left_p2 = None
                 
                 
     def get_transition_id(self, gesture_from, gesture_to):
@@ -70,7 +73,13 @@ class GestureInterpreter():
         
         if left_tid == self.get_transition_id('palm', 'fist'): 
             self.left_p1 = pose_landmarks[LEFT_WRIST]
-            print(f"palm -> fist; {self.left_p1}")
+            
+        if left_tid == self.get_transition_id('fist', 'palm'):
+            self.left_p2 = pose_landmarks[LEFT_WRIST]
+
+            if self.left_p1 is not None and self.left_p2 is not None:
+                vector = self.left_p2 - self.left_p1
+                print(vector)
             
         
             

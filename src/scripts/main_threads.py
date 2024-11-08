@@ -193,6 +193,7 @@ def update(f):
         pose_x = pose_lms[:,0]
         pose_y = pose_lms[:,1]
         pose_z = pose_lms[:,2]
+        #print(data['pose_lms'].shape)
         
         # Get cube
         corners = get_bounding_cube(pose_x, pose_y, pose_z, 1)
@@ -211,6 +212,10 @@ def update(f):
         #pose_scatter.set_3d_properties(pose_z[11:])
         pose_scatter._offsets3d = (pose_x[11:], pose_y[11:], pose_z[11:])
         cube_scatter._offsets3d = (corners[:, 0], corners[:, 1], corners[:, 2])
+        
+        plot_ax.set_xlim(corners[0,0], corners[1,0])
+        plot_ax.set_ylim(corners[0,1], corners[2,1])
+        plot_ax.set_zlim(corners[0,2], corners[4,2])
 
     return [im, pose_lines, pose_scatter, cube_scatter, line_collection]
 
