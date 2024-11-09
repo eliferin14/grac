@@ -303,6 +303,8 @@ class GestureDetector():
         # Initialize results to None
         self.right_hand_gesture, self.left_hand_gesture = None, None
         self.right_hand_landmarks, self.left_hand_landmarks = None, None
+        self.right_hand_landmarks_matrix, self.right_hand_world_landmarks_matrix = None, None
+        self.left_hand_landmarks_matrix, self.left_hand_world_landmarks_matrix = None, None
         self.pose_landmarks = None
         self.right_hand_data, self.left_hand_data = HandData(), HandData()
         
@@ -377,10 +379,6 @@ class GestureDetector():
                 hand_world_landmarks_tensor = self._convert_results_to_tensor(hand_world_landmarks)
                 handedness_tensor = np.array([[handedness.classification[0].index]]).astype(np.float32)
                 
-                # Normalize world landmarks
-                if ignore_orientation:
-                    hand_world_landmarks_tensor = normalize_landmarks(hand_world_landmarks_tensor,handedness.classification[0].label)
-                
                 # Call the gesture embedder model
                 self.gesture_embedder.set_tensor(self.gesture_embedder_input[0]['index'], hand_landmarks_tensor)
                 self.gesture_embedder.set_tensor(self.gesture_embedder_input[1]['index'], handedness_tensor)
@@ -403,14 +401,20 @@ class GestureDetector():
                 
                 # Save the landmarks and the gesture to the appropriate varaible
                 if handedness.classification[0].index == self.RIGHT:
-                    self.right_hand_landmarks = hand_landmarks
+                    self.right_hand_landmarks_matrix = hand_landmarks_tensor[0]
+                    self.right_hand_world_landmarks_matrix = hand_world_landmarks_tensor[0]
                     _, gesture = self.rightGTR.gesture_change_request(gesture)
                     self.right_hand_gesture = gesture
-                    self.right_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Right')
+                    
+                    #self.right_hand_landmarks = hand_landmarks
+                    #self.right_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Right')
                 else:
-                    self.left_hand_landmarks = hand_landmarks
+                    self.left_hand_landmarks_matrix = hand_landmarks_tensor[0]
+                    self.left_hand_world_landmarks_matrix = hand_world_landmarks_tensor[0]
                     _, gesture = self.leftGTR.gesture_change_request(gesture)
                     self.left_hand_gesture = gesture
+                    
+                    self.left_hand_landmarks = hand_landmarks
                     self.left_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Left')
     
     
@@ -428,6 +432,8 @@ class GestureDetector():
         
         # Reset results to None
         self.pose_landmarks = None
+        
+        if results.pose_landmarks is None: return
         
         # Save raw results for drawing
         self.pose_landmarks_raw = results.pose_landmarks
@@ -454,6 +460,8 @@ class GestureDetector():
         Args:
             hand_world_landmarks (_type_): result of the hand recognition process as a tensor
         """        ''''''
+        if landmarks is None: return
+        
         num_landmarks = len(landmarks.landmark)
         hand_landmarks_matrix = np.zeros((1,num_landmarks,3))
         i = 0
@@ -465,7 +473,9 @@ class GestureDetector():
             
         return hand_landmarks_matrix.astype(np.float32)  
     
+    
     def _convert_results_to_matrix(self, landmarks):
+        if landmarks is None: return
         return self._convert_results_to_tensor(landmarks)[0]
     
     

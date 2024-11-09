@@ -11,6 +11,7 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
 from gesture_utils.gesture_detector import GestureDetector
+from gesture_utils.ros_utils import convert_2Dmatrix_to_ROSpoints, convert_3Dmatrix_to_ROSpoints
 from gesture_control.msg import draw
 
 # Find the model directory absolute path
@@ -44,8 +45,15 @@ def talker():
         # Capture frame
         ret, frame = cam.read()
         if not ret: continue
+        frame = cv2.flip(frame, 1)
         
         # Process frame
+        detector.process(frame)
+        rhl = convert_2Dmatrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
+        rhwl = convert_3Dmatrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
+        lhl = convert_2Dmatrix_to_ROSpoints(detector.left_hand_landmarks_matrix)
+        lhwl = convert_3Dmatrix_to_ROSpoints(detector.left_hand_world_landmarks_matrix)
+        #print(lhl)
         
         # Convert frame to ROS image
         ros_image = bridge.cv2_to_imgmsg(frame, encoding="bgr8")
@@ -54,6 +62,8 @@ def talker():
         draw_msg = draw()
         draw_msg.header = Header()
         draw_msg.frame = ros_image
+        draw_msg.rh_2D_landmarks = rhl
+        draw_msg.lh_2D_landmarks = lhl
         pub.publish(draw_msg)
         rospy.loginfo("Published an image to /draw_topic")
         
