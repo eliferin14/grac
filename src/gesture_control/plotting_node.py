@@ -70,6 +70,11 @@ def update_data_callback(msg):
     lhl_x, lhl_y, lhl_z = convert_ROSpoints_to_XYZarrays(lhl_ros)
     pl_x, pl_y, pl_z = convert_ROSpoints_to_XYZarrays(pl_ros)
     
+    # Rotate points by 90deg about x
+    pl_x, pl_y, pl_z = rot_x_90(pl_x, pl_y, pl_z)
+    rhl_x, rhl_y, rhl_z = rot_x_90(rhl_x, rhl_y, rhl_z)
+    lhl_x, lhl_y, lhl_z = rot_x_90(lhl_x, lhl_y, lhl_z)
+    
     rospy.logdebug("Data updated")
     
     
@@ -115,6 +120,31 @@ def get_bounding_cube(x, y, z):
     
     # Return the min and max values for each axis that define the cube
     return x_min, y_min, z_min, (x_min + cube_side), (y_min + cube_side), (z_min + cube_side)
+
+
+def calculate_centered_bounding_cube(x, y, z):
+    if len(x) == 0: return 0,0,0,1,1,1
+    # Convert inputs to numpy arrays (in case they are lists)
+    x, y, z = np.array(x), np.array(y), np.array(z)
+    
+    # Calculate the average (mean) of x, y, z
+    mean_x, mean_y, mean_z = np.mean(x), np.mean(y), np.mean(z)
+    
+    # Find the minimum and maximum values of x, y, z
+    x_min, y_min, z_min = np.min(x), np.min(y), np.min(z)
+    x_max, y_max, z_max = np.max(x), np.max(y), np.max(z)
+    
+    # Calculate the side length of the cube (largest range across any axis)
+    cube_side = max(x_max - x_min, y_max - y_min, z_max - z_min)
+    
+    # Adjust the cube to be centered around the average point
+    center_offset = np.array([mean_x, mean_y, mean_z])
+    
+    # Calculate the new min and max values based on the center and cube side length
+    min_point = center_offset - cube_side / 2
+    max_point = center_offset + cube_side / 2
+    
+    return min_point[0], min_point[1], min_point[2], max_point[0], max_point[1], max_point[2]
     
     
 def rot_x_90(x,y,z):
@@ -129,17 +159,12 @@ def update_plot_callback(f):
     
     global rhl_x, rhl_y, rhl_z, lhl_x, lhl_y, lhl_z, pl_x, pl_y, pl_z
     
-    # Rotate points by 90deg about x
-    pl_x, pl_y, pl_z = rot_x_90(pl_x, pl_y, pl_z)
-    rhl_x, rhl_y, rhl_z = rot_x_90(rhl_x, rhl_y, rhl_z)
-    lhl_x, lhl_y, lhl_z = rot_x_90(lhl_x, lhl_y, lhl_z)
-    
     # Set the new data in the pose plot
     px, py, pz, plines = update_scatter_and_lines(pl_x, pl_y, pl_z, pose_connection_list, pose_landmarks_blacklist)
     pl_scatter._offsets3d = (px, py, pz)
     pose_line_collection.set_segments(plines)
     # Set limits
-    x_min, y_min, z_min, x_max, y_max, z_max = get_bounding_cube(px, py, pz)
+    x_min, y_min, z_min, x_max, y_max, z_max = calculate_centered_bounding_cube(px, py, pz)
     pose_ax.set_xlim([x_min, x_max])
     pose_ax.set_ylim([y_min, y_max])
     pose_ax.set_zlim([z_min, z_max])
@@ -150,7 +175,7 @@ def update_plot_callback(f):
     rhl_scatter._offsets3d = (rx, ry, rz)
     right_line_collection.set_segments(rlines)    
     # Set limits
-    x_min, y_min, z_min, x_max, y_max, z_max = get_bounding_cube(rx, ry, rz)
+    x_min, y_min, z_min, x_max, y_max, z_max = calculate_centered_bounding_cube(rx, ry, rz)
     right_ax.set_xlim([x_min, x_max])
     right_ax.set_ylim([y_min, y_max])
     right_ax.set_zlim([z_min, z_max])
@@ -159,7 +184,7 @@ def update_plot_callback(f):
     lhl_scatter._offsets3d = (lx, ly, lz)
     left_line_collection.set_segments(llines)   
     # Set limits
-    x_min, y_min, z_min, x_max, y_max, z_max = get_bounding_cube(lx, ly, lz)
+    x_min, y_min, z_min, x_max, y_max, z_max = calculate_centered_bounding_cube(lx, ly, lz)
     left_ax.set_xlim([x_min, x_max])
     left_ax.set_ylim([y_min, y_max])
     left_ax.set_zlim([z_min, z_max])
