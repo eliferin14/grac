@@ -13,10 +13,15 @@ from gesture_utils.ros_utils import convert_ROSpoints_to_XYZarrays
 
 
 # Define the figure
-fig = plt.figure()
+fig = plt.figure(figsize=(18,6))
 pose_ax = fig.add_subplot(131, projection='3d')
 left_ax = fig.add_subplot(132, projection='3d')
 right_ax = fig.add_subplot(133, projection='3d')
+
+# Set titles and stuff
+pose_ax.set_title("Pose")
+right_ax.set_title("Right hand")
+left_ax.set_title("Left hand")
 
 # Initialize data as empty lists
 rhl_x, rhl_y, rhl_z = [], [], []
