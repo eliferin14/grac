@@ -32,7 +32,7 @@ def talker():
     
     # Start the node
     rospy.init_node('gesture_detector', anonymous=True)
-    rate = rospy.Rate(50)  # 10hz
+    rate = rospy.Rate(10)  # 10hz
     
     # Initialize the publishers
     draw_publisher = rospy.Publisher('draw_topic', draw, queue_size=10)

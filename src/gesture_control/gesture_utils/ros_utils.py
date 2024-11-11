@@ -36,3 +36,16 @@ def convert_ROSpoints_to_matrix(points):
         matrix = np.vstack([matrix, point])
         
     return matrix
+
+
+
+
+def convert_ROSpoints_to_XYZarrays(points):
+    x, y, z = [], [], []
+    
+    for p in points:
+        x.append(p.x)
+        y.append(p.y)
+        z.append(p.z)
+        
+    return x, y, z

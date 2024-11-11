@@ -457,7 +457,7 @@ class GestureDetector():
         # Translate
         origin = (rotated_landmarks[11] + rotated_landmarks[12]) / 2
         rotated_landmarks -= origin
-        self.pose_world_landmarks_matrix = rotated_landmarks
+        #self.pose_world_landmarks_matrix = rotated_landmarks
     
     
     
