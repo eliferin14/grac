@@ -2,7 +2,8 @@ import rospy
 import numpy as np
 from geometry_msgs.msg import Point32
 
-def convert_2Dmatrix_to_ROSpoints(matrix):
+# Deprecated
+def _convert_2Dmatrix_to_ROSpoints(matrix):
     
     if matrix is None: return []
     
@@ -27,7 +28,7 @@ def convert_2Dmatrix_to_ROSpoints(matrix):
 
 
 
-def convert_3Dmatrix_to_ROSpoints(matrix):
+def convert_matrix_to_ROSpoints(matrix):
     
     if matrix is None: return []
     
@@ -53,14 +54,15 @@ def convert_3Dmatrix_to_ROSpoints(matrix):
 
 
 
-def convert_ROSpoints_to_2Dmatrix(points):
+def convert_ROSpoints_to_matrix(points):
     
-    matrix = np.empty( (0,2), dtype=np.float32)
+    matrix = np.empty( (0,3), dtype=np.float32)
     
     for p in points:
-        point = np.zeros((1,2))
+        point = np.zeros((1,3))
         point[0,0] = p.x
         point[0,1] = p.y
+        point[0,2] = p.z
         
         matrix = np.vstack([matrix, point])
         

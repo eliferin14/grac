@@ -11,7 +11,7 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
 from gesture_utils.gesture_detector import GestureDetector
-from gesture_utils.ros_utils import convert_2Dmatrix_to_ROSpoints, convert_3Dmatrix_to_ROSpoints
+from gesture_utils.ros_utils import convert_matrix_to_ROSpoints
 from gesture_control.msg import draw
 
 # Find the model directory absolute path
@@ -32,7 +32,7 @@ def talker():
     
     # Start the node
     rospy.init_node('gesture_detector', anonymous=True)
-    rate = rospy.Rate(10)  # 10hz
+    rate = rospy.Rate(50)  # 10hz
     
     # Initialize the publisher
     pub = rospy.Publisher('draw_topic', draw, queue_size=10)
@@ -49,11 +49,13 @@ def talker():
         
         # Process frame
         detector.process(frame)
-        rhl = convert_2Dmatrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
-        rhwl = convert_3Dmatrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
-        lhl = convert_2Dmatrix_to_ROSpoints(detector.left_hand_landmarks_matrix)
-        lhwl = convert_3Dmatrix_to_ROSpoints(detector.left_hand_world_landmarks_matrix)
+        rhl = convert_matrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
+        rhwl = convert_matrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
+        lhl = convert_matrix_to_ROSpoints(detector.left_hand_landmarks_matrix)
+        lhwl = convert_matrix_to_ROSpoints(detector.left_hand_world_landmarks_matrix)
+        pl = convert_matrix_to_ROSpoints(detector.pose_landmarks_matrix)
         #print(lhl)
+        
         
         # Convert frame to ROS image
         ros_image = bridge.cv2_to_imgmsg(frame, encoding="bgr8")
@@ -64,6 +66,7 @@ def talker():
         draw_msg.frame = ros_image
         draw_msg.rh_2D_landmarks = rhl
         draw_msg.lh_2D_landmarks = lhl
+        draw_msg.pose_2D_landmarks = pl
         pub.publish(draw_msg)
         rospy.loginfo("Published an image to /draw_topic")
         

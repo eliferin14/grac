@@ -305,7 +305,7 @@ class GestureDetector():
         self.right_hand_landmarks, self.left_hand_landmarks = None, None
         self.right_hand_landmarks_matrix, self.right_hand_world_landmarks_matrix = None, None
         self.left_hand_landmarks_matrix, self.left_hand_world_landmarks_matrix = None, None
-        self.pose_landmarks = None
+        self.pose_landmarks_matrix, self.pose_world_landmarks_matrix = None, None
         self.right_hand_data, self.left_hand_data = HandData(), HandData()
         
         # Initialize the filters
@@ -366,7 +366,9 @@ class GestureDetector():
         
         # Reset outputs to None
         self.right_hand_gesture, self.left_hand_gesture = None, None            
-        self.right_hand_landmarks, self.left_hand_landmarks = None, None
+        self.right_hand_landmarks, self.left_hand_landmarks = None, None       
+        self.right_hand_landmarks_matrix, self.left_hand_landmarks_matrix = None, None
+        self.right_hand_world_landmarks_matrix, self.left_hand_world_landmarks_matrix = None, None
         self.right_hand_data, self.left_hand_data = HandData(), HandData()
         
         # Process the results
@@ -431,12 +433,18 @@ class GestureDetector():
         results = self.pose_landmarker.process(rgb_frame)
         
         # Reset results to None
-        self.pose_landmarks = None
+        self.pose_landmarks_matrix, self.pose_world_landmarks_matrix = None, None
         
         if results.pose_landmarks is None: return
         
         # Save raw results for drawing
         self.pose_landmarks_raw = results.pose_landmarks
+        
+        # Convert to numpy matrix
+        self.pose_landmarks_matrix = self._convert_results_to_matrix(results.pose_landmarks)
+        self.pose_world_landmarks_matrix = self._convert_results_to_matrix(results.pose_world_landmarks)
+        
+        if self.pose_landmarks_matrix is None: return
         
         # Rotate to have a standin figure
         R = np.array([
@@ -444,12 +452,12 @@ class GestureDetector():
             [0, 0, 1],
             [0, -1, 0]
         ])
-        rotated_landmarks = self._convert_results_to_matrix(results.pose_landmarks) @ R.T
+        rotated_landmarks = self.pose_world_landmarks_matrix @ R.T
         
         # Translate
         origin = (rotated_landmarks[11] + rotated_landmarks[12]) / 2
         rotated_landmarks -= origin
-        self.pose_landmarks = rotated_landmarks
+        self.pose_world_landmarks_matrix = rotated_landmarks
     
     
     
@@ -506,7 +514,7 @@ class GestureDetector():
         """        ''''''
         
         if draw_pose:
-            if self.pose_landmarks is not None:
+            if self.pose_landmarks_matrix is not None:
         
                 # Remove unwanted landmarks from the drawing process
                 # Since a change of the properties of the landmark is required, create an independent copy of the landmark set

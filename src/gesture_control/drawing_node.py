@@ -6,7 +6,7 @@ import cv2
 from cv_bridge import CvBridge
 
 from gesture_control.msg import draw
-from gesture_utils.ros_utils import convert_ROSpoints_to_2Dmatrix
+from gesture_utils.ros_utils import convert_ROSpoints_to_matrix
 from gesture_utils.drawing_utils import draw_hand, draw_pose, denormalize_landmarks
 
 
@@ -20,26 +20,30 @@ def draw_callback(msg):
     ros_image = msg.frame
     rhl_ros = msg.rh_2D_landmarks
     lhl_ros = msg.lh_2D_landmarks
+    pl_ros = msg.pose_2D_landmarks
     
     # Convert ROS image to opencv image
     frame = bridge.imgmsg_to_cv2(ros_image, desired_encoding='bgr8')
     
     # Convert points array to numpy matrices
-    rhl = convert_ROSpoints_to_2Dmatrix(rhl_ros)
-    lhl = convert_ROSpoints_to_2Dmatrix(lhl_ros)
+    rhl = convert_ROSpoints_to_matrix(rhl_ros)
+    lhl = convert_ROSpoints_to_matrix(lhl_ros)
+    pl = convert_ROSpoints_to_matrix(pl_ros)
     #print(rhl)
     
     # De-normalize landmarks
     height, width = frame.shape[0], frame.shape[1]
     rhl_pixel = denormalize_landmarks(rhl, width, height)
     lhl_pixel = denormalize_landmarks(lhl, width, height)
-    print(lhl_pixel)
+    pl_pixel = denormalize_landmarks(pl, width, height)
+    #print(lhl_pixel)
+    
+    # Draw pose
+    draw_pose(frame, pl_pixel, point_color=(0,255,0), line_color=(128,128,128))
     
     # Draw hands
     draw_hand(frame, rhl_pixel, point_color=(255,0,0), line_color=(255,255,255))
     draw_hand(frame, lhl_pixel, point_color=(0,0,255), line_color=(255,255,255))
-    
-    # Draw pose
     
     # Add text
     

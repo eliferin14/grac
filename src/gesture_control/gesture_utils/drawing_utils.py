@@ -1,7 +1,21 @@
 import cv2
 import numpy as np
+import mediapipe as mp
+
+mp_pose = mp.solutions.pose
+mp_hands = mp.solutions.hands
 
 def denormalize_landmarks(matrix, width, height):
+    """Converts landmarks coordinates from normalized image coordinates to pixel coordinates
+
+    Args:
+        matrix (_type_): _description_
+        width (_type_): _description_
+        height (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """    ''''''
     landmarks_pixel = np.empty((0,2), dtype=np.int16)
     
     for lm in matrix:
@@ -13,6 +27,14 @@ def denormalize_landmarks(matrix, width, height):
     return landmarks_pixel
 
 def draw_landmarks(frame, landmarks, point_color, line_color):
+    """Draw the lanmdarks on the image
+
+    Args:
+        frame (opencv image): _description_
+        landmarks (np matrix): pixel coordinates of the landmarks
+        point_color (_type_): _description_
+        line_color (_type_): _description_
+    """    ''''''
     # Draw all the landmarks
     for lm in landmarks:
         #print((lm[0], lm[1]))
@@ -32,7 +54,18 @@ hand_connections = [
     (17, 18), (18, 19), (19, 20),  # Pinky
     (0, 17)
 ]
+hand_connections = list(mp_hands.HAND_CONNECTIONS)
 def draw_hand(frame, landmarks, point_color, line_color):
+    """Draw the hand landmarks and connections
+
+    Args:
+        frame (_type_): _description_
+        landmarks (_type_): _description_
+        point_color (_type_): _description_
+        line_color (_type_): _description_
+    """    ''''''
+    
+    if landmarks.shape[0] == 0: return 
     
     # Draw connections
     for (p1, p2) in hand_connections:
@@ -41,5 +74,19 @@ def draw_hand(frame, landmarks, point_color, line_color):
     # Draw all the landmarks
     draw_landmarks(frame, landmarks, point_color, line_color)
 
-def draw_pose(frame, landmarks, color):
-    return
+pose_connections = pose_connections = list(mp_pose.POSE_CONNECTIONS)
+def draw_pose(frame, landmarks, point_color, line_color):
+    """Draw the pose landmarks and connections
+
+    Args:
+        frame (_type_): _description_
+        landmarks (_type_): _description_
+        point_color (_type_): _description_
+        line_color (_type_): _description_
+    """    
+    # Draw connections
+    for (p1, p2) in pose_connections:
+        cv2.line(frame, landmarks[p1], landmarks[p2], line_color, 2)
+    
+    # Draw all the landmarks
+    draw_landmarks(frame, landmarks, point_color, line_color)
