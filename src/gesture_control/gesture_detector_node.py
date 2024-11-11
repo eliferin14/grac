@@ -12,7 +12,7 @@ from sensor_msgs.msg import Image
 
 from gesture_utils.gesture_detector import GestureDetector
 from gesture_utils.ros_utils import convert_matrix_to_ROSpoints
-from gesture_control.msg import draw
+from gesture_control.msg import draw, plot
 
 # Find the model directory absolute path
 model_realtive_path = "gesture_utils/training/exported_model"
@@ -34,8 +34,9 @@ def talker():
     rospy.init_node('gesture_detector', anonymous=True)
     rate = rospy.Rate(50)  # 10hz
     
-    # Initialize the publisher
-    pub = rospy.Publisher('draw_topic', draw, queue_size=10)
+    # Initialize the publishers
+    draw_publisher = rospy.Publisher('draw_topic', draw, queue_size=10)
+    plot_publisher = rospy.Publisher('plot_topic', plot, queue_size=10)
     
     # Initialize the bridge
     bridge = CvBridge()
@@ -49,13 +50,11 @@ def talker():
         
         # Process frame
         detector.process(frame)
-        rhl = convert_matrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
-        rhwl = convert_matrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
-        lhl = convert_matrix_to_ROSpoints(detector.left_hand_landmarks_matrix)
-        lhwl = convert_matrix_to_ROSpoints(detector.left_hand_world_landmarks_matrix)
-        pl = convert_matrix_to_ROSpoints(detector.pose_landmarks_matrix)
-        #print(lhl)
         
+        # Convert normalized image coordiantes matrix to a list of ROS points
+        rhl = convert_matrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
+        lhl = convert_matrix_to_ROSpoints(detector.left_hand_landmarks_matrix)
+        pl = convert_matrix_to_ROSpoints(detector.pose_landmarks_matrix)
         
         # Convert frame to ROS image
         ros_image = bridge.cv2_to_imgmsg(frame, encoding="bgr8")
@@ -67,8 +66,24 @@ def talker():
         draw_msg.rh_2D_landmarks = rhl
         draw_msg.lh_2D_landmarks = lhl
         draw_msg.pose_2D_landmarks = pl
-        pub.publish(draw_msg)
-        rospy.loginfo("Published an image to /draw_topic")
+        draw_publisher.publish(draw_msg)
+        rospy.loginfo("Published image and landmarks to /draw_topic")
+        
+        
+        # Convert world coordinates to a list of ROS points
+        rhwl = convert_matrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
+        lhwl = convert_matrix_to_ROSpoints(detector.left_hand_world_landmarks_matrix)
+        pwl = convert_matrix_to_ROSpoints(detector.pose_world_landmarks_matrix)
+        
+        # Publish on the plot topic
+        plot_msg = plot()
+        plot_msg.header = Header()
+        plot_msg.rh_landmarks = rhwl
+        plot_msg.lh_landmarks = lhwl
+        plot_msg.pose_landmarks = pwl
+        plot_publisher.publish(plot_msg)
+        rospy.loginfo("Published landmarks to /plot_topic")
+        
         
         rate.sleep()
         
