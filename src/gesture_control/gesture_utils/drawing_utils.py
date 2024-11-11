@@ -26,7 +26,7 @@ def denormalize_landmarks(matrix, width, height):
     
     return landmarks_pixel
 
-def draw_landmarks(frame, landmarks, point_color, line_color):
+def draw_landmarks(frame, landmarks, point_color, line_color, blacklist=[] ):
     """Draw the lanmdarks on the image
 
     Args:
@@ -36,24 +36,16 @@ def draw_landmarks(frame, landmarks, point_color, line_color):
         line_color (_type_): _description_
     """    ''''''
     # Draw all the landmarks
-    for lm in landmarks:
-        #print((lm[0], lm[1]))
+    for i, lm in enumerate(landmarks):
+        
+        # Skip unwanted landmarks
+        if i in blacklist: continue
         cv2.circle(frame, (lm[0], lm[1]), radius=3, color=point_color, thickness=-1)
         cv2.circle(frame, (lm[0], lm[1]), radius=4, color=line_color, thickness=1)
         
-
-hand_connections = [
-    (0, 1), (1, 2), (2, 3), (3, 4),  # Thumb
-    (0, 5),  # Thumb to wrist
-    (5, 6), (6, 7), (7, 8),  # Index finger
-    (5, 9),  # Index finger to wrist
-    (9, 10), (10, 11), (11, 12),  # Middle finger
-    (9, 13),  # Middle finger to wrist
-    (13, 14), (14, 15), (15, 16),  # Ring finger
-    (13, 17),  # Ring finger to wrist
-    (17, 18), (18, 19), (19, 20),  # Pinky
-    (0, 17)
-]
+        
+        
+        
 hand_connections = list(mp_hands.HAND_CONNECTIONS)
 def draw_hand(frame, landmarks, point_color, line_color):
     """Draw the hand landmarks and connections
@@ -72,9 +64,14 @@ def draw_hand(frame, landmarks, point_color, line_color):
         cv2.line(frame, landmarks[p1], landmarks[p2], line_color, 2)
     
     # Draw all the landmarks
-    draw_landmarks(frame, landmarks, point_color, line_color)
+    draw_landmarks(frame, landmarks, point_color, line_color, [])
+
+
+
+
 
 pose_connections = pose_connections = list(mp_pose.POSE_CONNECTIONS)
+pose_landmarks_blacklist = [0,1,2,3,4,5,6,7,8,9,10,17,18,19,20,21,22]
 def draw_pose(frame, landmarks, point_color, line_color):
     """Draw the pose landmarks and connections
 
@@ -86,7 +83,12 @@ def draw_pose(frame, landmarks, point_color, line_color):
     """    
     # Draw connections
     for (p1, p2) in pose_connections:
+        
+        # Skip unwanted landmarks
+        if p1 in pose_landmarks_blacklist or p2 in pose_landmarks_blacklist:
+            continue
+        
         cv2.line(frame, landmarks[p1], landmarks[p2], line_color, 2)
     
     # Draw all the landmarks
-    draw_landmarks(frame, landmarks, point_color, line_color)
+    draw_landmarks(frame, landmarks, point_color, line_color, pose_landmarks_blacklist)

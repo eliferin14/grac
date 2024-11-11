@@ -48,7 +48,7 @@ def talker():
         if not ret: continue
         frame = cv2.flip(frame, 1)
         
-        # Process frame
+        # Process frame (detect hands and pose)
         detector.process(frame)
         
         # Convert normalized image coordiantes matrix to a list of ROS points
@@ -82,8 +82,7 @@ def talker():
         plot_msg.lh_landmarks = lhwl
         plot_msg.pose_landmarks = pwl
         plot_publisher.publish(plot_msg)
-        rospy.loginfo("Published landmarks to /plot_topic")
-        
+        rospy.loginfo("Published landmarks to /plot_topic")        
         
         rate.sleep()
         
