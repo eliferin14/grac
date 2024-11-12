@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque
 
-from gesture_detector import HandData, get_landmark_by_id
+from gesture_utils.gesture_detector import HandData, get_landmark_by_id
+from gesture_utils.frameworks.joint_control import JointControlManager
 
 
 def get_vector(p1, p2):
@@ -21,8 +22,7 @@ RIGHT_WRIST = 16
 
 class GestureInterpreter():
     
-    #right_hand_sequence: list[HandData]
-    #left_hand_sequence: list[HandData]
+    frameworks = [JointControlManager()]
         
     def __init__(self, labels_path, sequence_length=10):
         
@@ -49,6 +49,8 @@ class GestureInterpreter():
         
         self.left_p1 = None
         self.left_p2 = None
+        
+        self.selected_framework = 0
                 
                 
     def get_transition_id(self, gesture_from, gesture_to):
@@ -66,7 +68,7 @@ class GestureInterpreter():
         # Check if there are enough gestures
         if len(self.right_hand_sequence) < 2: return
             
-        # Get transition_id using the last two gestures
+        """ # Get transition_id using the last two gestures
         left_tid = self.get_transition_id(self.left_hand_sequence[-2].gesture, self.left_hand_sequence[-1].gesture)
         
         # Do something depending on the transition
@@ -79,7 +81,10 @@ class GestureInterpreter():
 
             if self.left_p1 is not None and self.left_p2 is not None:
                 vector = self.left_p2 - self.left_p1
-                print(vector)
+                print(vector) """
+                
+        framework_manager = self.frameworks[self.selected_framework]
+        framework_manager.interpret_gestures(self.right_hand_sequence[-1], self.left_hand_sequence[-1])
             
         
             
