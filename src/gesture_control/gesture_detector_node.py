@@ -13,6 +13,7 @@ from sensor_msgs.msg import Image
 from gesture_utils.gesture_detector import GestureDetector
 from gesture_utils.ros_utils import convert_matrix_to_ROSpoints
 from gesture_control.msg import draw, plot
+from gesture_utils.fps_counter import FPS_Counter
 
 # Find the model directory absolute path
 model_realtive_path = "gesture_utils/training/exported_model"
@@ -27,6 +28,8 @@ detector = GestureDetector(
 
 # Open camera
 cam = cv2.VideoCapture(3)
+
+fps_counter = FPS_Counter()
 
 def talker():
     
@@ -51,6 +54,10 @@ def talker():
         # Process frame (detect hands and pose)
         detector.process(frame)
         
+        # Extract gestures
+        rh_gesture, lh_gesture = detector.get_hand_gestures()
+        rospy.loginfo(rh_gesture)
+        
         # Convert normalized image coordiantes matrix to a list of ROS points
         rhl = convert_matrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
         lhl = convert_matrix_to_ROSpoints(detector.left_hand_landmarks_matrix)
@@ -66,9 +73,11 @@ def talker():
         draw_msg.rh_2D_landmarks = rhl
         draw_msg.lh_2D_landmarks = lhl
         draw_msg.pose_2D_landmarks = pl
+        draw_msg.rh_gesture = rh_gesture if rh_gesture is not None else ''
+        draw_msg.lh_gesture = lh_gesture if lh_gesture is not None else ''
+        draw_msg.fps = fps_counter.get_fps()
         draw_publisher.publish(draw_msg)
-        rospy.loginfo("Published image and landmarks to /draw_topic")
-        
+        rospy.logdebug("Published image and landmarks to /draw_topic")        
         
         # Convert world coordinates to a list of ROS points
         rhwl = convert_matrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
@@ -82,7 +91,7 @@ def talker():
         plot_msg.lh_landmarks = lhwl
         plot_msg.pose_landmarks = pwl
         plot_publisher.publish(plot_msg)
-        rospy.loginfo("Published landmarks to /plot_topic")        
+        rospy.logdebug("Published landmarks to /plot_topic")        
         
         rate.sleep()
         

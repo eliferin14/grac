@@ -46,6 +46,9 @@ def draw_callback(msg):
     draw_hand(frame, lhl_pixel, point_color=(0,0,255), line_color=(255,255,255))
     
     # Add text
+    cv2.putText(frame, f"FPS: {msg.fps:.1f}", (50,50), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,255,0), thickness=2)
+    cv2.putText(frame, f"Left: {msg.lh_gesture}", (50,100), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
+    cv2.putText(frame, f"Right: {msg.rh_gesture}", (50,150), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness=2)
     
     # Show the image
     cv2.imshow("Live feed", frame)

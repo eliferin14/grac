@@ -1,0 +1,23 @@
+# Actions the robot can do
+- move absolute
+- move relative
+- move joints
+- pick / release
+- follow
+
+# Menu selections
+Choose a gesture and make its role to open a menu and select what to do
+Each entry in the menu specifies a framework
+In each framework gestures have different meaning
+The "pick" gesture is used to confirm
+Look at Apple vision pro navigation system
+
+# Frameworks
+Each framework could be one of the actions the robot can do:
+- move absolute
+- move relative
+- move joints
+
+Inside each framework you can have a hand that specifies what dof to control, and the other to choose what to do in that dof
+
+For example in the move joints framework I can have the left hand that selects the joint (from 0 to 5), and the right hand that somwhow selects and angle (for example mapping the thumb-index distance to 0-360 or something like that)
