@@ -38,7 +38,7 @@ def talker():
     rate = rospy.Rate(50)  # 10hz
     
     # Initialize the publishers
-    draw_publisher = rospy.Publisher('draw_topic', draw, queue_size=10)
+    draw_publisher = rospy.Publisher('draw_topic', draw, queue_size=1)
     plot_publisher = rospy.Publisher('plot_topic', plot, queue_size=10)
     
     # Initialize the bridge

@@ -2,7 +2,7 @@ import rospy
 import numpy as np
 
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
-from gesture_utils.frameworks.joint_control import JointControlManager
+from gesture_utils.frameworks.joint_control import JointFrameworkManager
 
 from sami.arm import Arm, EzPose
 
@@ -16,7 +16,7 @@ class FrameworkSelector():
     
     framework_managers = [
         BaseFrameworkManager(),
-        JointControlManager()
+        JointFrameworkManager()
     ]
     
     def __init__(self):

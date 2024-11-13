@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from collections import deque
 
 from gesture_utils.gesture_detector import HandData, get_landmark_by_id
-from gesture_utils.frameworks.joint_control import JointControlManager
+from gesture_utils.frameworks.joint_control import JointFrameworkManager
 
 
 def get_vector(p1, p2):
@@ -22,7 +22,7 @@ RIGHT_WRIST = 16
 
 class GestureInterpreter():
     
-    frameworks = [JointControlManager()]
+    frameworks = [JointFrameworkManager()]
         
     def __init__(self, labels_path, sequence_length=10):
         
