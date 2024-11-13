@@ -47,6 +47,7 @@ def draw_landmarks(frame, landmarks, point_color, line_color, blacklist=[] ):
         
         
 hand_connections = list(mp_hands.HAND_CONNECTIONS)
+
 def draw_hand(frame, landmarks, point_color, line_color):
     """Draw the hand landmarks and connections
 
@@ -72,6 +73,7 @@ def draw_hand(frame, landmarks, point_color, line_color):
 
 pose_connections = pose_connections = list(mp_pose.POSE_CONNECTIONS)
 pose_landmarks_blacklist = [0,1,2,3,4,5,6,7,8,9,10,17,18,19,20,21,22]
+
 def draw_pose(frame, landmarks, point_color, line_color):
     """Draw the pose landmarks and connections
 
@@ -81,6 +83,9 @@ def draw_pose(frame, landmarks, point_color, line_color):
         point_color (_type_): _description_
         line_color (_type_): _description_
     """    
+    
+    if landmarks.shape[0] == 0: return 
+    
     # Draw connections
     for (p1, p2) in pose_connections:
         
