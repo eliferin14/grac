@@ -50,3 +50,7 @@ qtcreator-*
 # Catkin custom files
 CATKIN_IGNORE
 .catkin_tools
+
+# Ignore SAMI stuff
+/src/iris_sami
+/src/iris_ur10e
