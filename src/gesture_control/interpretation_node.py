@@ -32,8 +32,18 @@ def interpretation_callback(msg):
     rh_gesture = msg.rh_gesture
     lh_gesture = msg.lh_gesture
     
+    # Convert ROS landmarks to numpy
+    rhl_np = convert_ROSpoints_to_matrix(rhl_ros)
+    lhl_np = convert_ROSpoints_to_matrix(lhl_ros)
+    
     # Ask for a function to execute
-    callback = interpreter.interpret_gestures(arm, rh_gesture, lh_gesture)
+    callback = interpreter.interpret_gestures(
+        arm=arm, 
+        rhg=rh_gesture, 
+        lhg=lh_gesture, 
+        rhl=rhl_np, 
+        lhl=lhl_np
+    )
     rospy.loginfo(f"Selected function {callback.func.__name__}()")
     
     # Execute the function

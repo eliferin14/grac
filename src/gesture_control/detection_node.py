@@ -10,9 +10,9 @@ from std_msgs.msg import Header
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
+from gesture_control.msg import draw, plot
 from gesture_utils.gesture_detector import GestureDetector
 from gesture_utils.ros_utils import convert_matrix_to_ROSpoints
-from gesture_control.msg import draw, plot
 from gesture_utils.fps_counter import FPS_Counter
 
 # Find the model directory absolute path

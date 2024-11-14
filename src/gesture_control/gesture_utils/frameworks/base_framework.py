@@ -17,13 +17,16 @@ def dummy_callback(p1, p2):
 
 class BaseFrameworkManager:
     
+    framework_name = "Base"
+    
     def __init__(self):
         pass
     
     def dummy_callback(self):
         return
     
-    def interpret_gestures(self, arm:Arm, right_gesture, left_gesture):
+    def interpret_gestures(self, *args, **kwargs):
+        
         """Given the left and right hand gestures and the landmarks, define the function that has to be run.
         Such function is returned to the caller for execution
 
@@ -32,6 +35,8 @@ class BaseFrameworkManager:
             left_gesture (_type_): _description_
         """        ''''''
         
+        #print(kwargs)
         
+        arm = kwargs.get('arm')
         
         return partial(arm.get_joints)

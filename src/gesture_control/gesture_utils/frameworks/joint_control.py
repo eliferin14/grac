@@ -26,6 +26,8 @@ def get_joint_limits(arm:Arm, index):
 
 class JointFrameworkManager(BaseFrameworkManager):
     
+    framework_name = "Joint"
+    
     gesture_to_joint_list = np.array(['fist', 'one', 'two', 'three', 'four', 'palm'])
     
     def __init__(self):
@@ -41,7 +43,13 @@ class JointFrameworkManager(BaseFrameworkManager):
     
     
     
-    def interpret_gestures(self, arm:Arm, right_gesture, left_gesture):
+    def interpret_gestures(
+        self, 
+        arm: Arm, 
+        right_gesture, 
+        left_gesture,
+        rh_landmarks,
+        lh_landmarks):
                
         # The left hand selects the joint
         candidate_selected_joint = np.where(self.gesture_to_joint_list == left_gesture)[0]
@@ -61,7 +69,7 @@ class JointFrameworkManager(BaseFrameworkManager):
         rospy.loginfo(f"Joint limits for joint {self.selected_joint}: {joint_limits}")
         
         # The right hand selects the angle
-        angle = np.pi/8
+        angle = np.pi/64
         
         # Get current joint configuration
         current_joints = arm.get_joints()
