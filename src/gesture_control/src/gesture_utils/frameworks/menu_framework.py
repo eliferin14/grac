@@ -22,7 +22,7 @@ class MenuFrameworkManager(BaseFrameworkManager):
     framework_name = "Menu"
     
     min_theta = np.pi * 3/8
-    max_theta = np.pi * 7/8
+    max_theta = np.pi * 5/8
     range_theta = max_theta - min_theta
     
     def interpret_gestures(self, *args, **kwargs):
@@ -54,8 +54,12 @@ class MenuFrameworkManager(BaseFrameworkManager):
         s = 0
         while dtheta > (s)*sector_width:
             s += 1
+        if s==0: s=1    # Edge case when the angle is outside the range (dtheta < 0)
             
         # Wait for confirmation from right hand
+        rh_confirmation = False
+        if rhg == 'pick':
+            rh_confirmation = True
         
         # "Reverse" the index: 0 is on the left
         index = fw_number - s
@@ -65,8 +69,8 @@ class MenuFrameworkManager(BaseFrameworkManager):
             'index':index
         }
         
-        return index,   partial(
-                            draw_menu,
-                            frame=None,
-                            **draw_kwargs
-                        )
+        return index, rh_confirmation,  partial(
+                                            draw_menu,
+                                            frame=None,
+                                            **draw_kwargs
+                                        )

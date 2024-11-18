@@ -102,7 +102,19 @@ def draw_pose(frame, landmarks, point_color, line_color):
     
     
     
-def draw_menu(frame, framework_names, selected_framework, lhl_pixel, min_theta=np.pi/4, max_theta=np.pi*3/4, scaling=1.3, radius=15, color=(0,0,0), selected_color=(0,0,255)):
+def draw_menu(
+    frame, 
+    framework_names, 
+    candidate_framework,
+    selected_framework, 
+    lhl_pixel, 
+    min_theta=np.pi/4, 
+    max_theta=np.pi*3/4, 
+    scaling=1.3, 
+    radius=15, 
+    candidate_color=(0,0,255),
+    selected_color=(255,64,0)
+):
     
     if len(lhl_pixel) == 0: return
     
@@ -130,15 +142,23 @@ def draw_menu(frame, framework_names, selected_framework, lhl_pixel, min_theta=n
         y = palm_origin[1] - int( l * np.sin(theta) )   # y axis is positive downwards!
         #print((selected_framework, x,y))
         
-        # Draw circles
-        fill_color = selected_color if (fw_number-i-1) == selected_framework else color
-        border_color = selected_color if (fw_number-i-1) != selected_framework else color
+        # Select colors
+        fill_color = (255,255,255)
+        border_color = (0,0,0)
+        
+        if (fw_number-i-1) == candidate_framework:
+            fill_color = candidate_color
+            border_color = (0,0,0)
+        
+        if (fw_number-i-1) == selected_framework:
+            fill_color = selected_color
+            border_color = (0,0,0)
         
         cv2.circle(frame, (x,y), radius, fill_color, thickness=-1)
         cv2.circle(frame, (x,y), radius, border_color, thickness=3)
         
     # Draw the name of the selected framework
-    cv2.putText(frame, framework_names[selected_framework], (palm_origin[0],palm_origin[1]), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
+    cv2.putText(frame, framework_names[candidate_framework], (palm_origin[0],palm_origin[1]), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
         
         
     
@@ -162,6 +182,7 @@ def draw_on_frame(
     fps='',
     framework_names=[],
     selected_framework=0,
+    candidate_framework=0,
     min_theta=np.pi/4,
     max_theta=np.pi*3/4
 ):
@@ -184,6 +205,6 @@ def draw_on_frame(
     cv2.putText(frame, f"Right: {rhg}", (50,150), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness=2)
     
     # Draw the menu
-    draw_menu(frame, framework_names, selected_framework, lhl_pixel, min_theta, max_theta)
+    draw_menu(frame, framework_names, candidate_framework, selected_framework, lhl_pixel, min_theta, max_theta)
     
     

@@ -37,7 +37,7 @@ class FrameworkSelector():
         # The default framework is the base framework
         # NOTE for testing purposes the default is the joint control
         self.selected_framework_manager = self.framework_managers[0]
-        self.selected_framework_index = 0
+        self.selected_framework_index, self.candidate_framework_index = 0, 0
         
         
         
@@ -67,12 +67,19 @@ class FrameworkSelector():
             kwargs['fwn'] = self.framework_names
             
             # Call the interpretation function of the menu
-            self.selected_framework_index, callback = self.menu_manager.interpret_gestures(*args, **kwargs)
+            self.candidate_framework_index, rh_confirmation, callback = self.menu_manager.interpret_gestures(*args, **kwargs)
             
-            # Select the desired framework
-            self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
+            # If the RH confirmed, change the selected framework
+            if rh_confirmation:
+                self.selected_framework_index = self.candidate_framework_index
+                
+                # Select the desired framework
+                self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
+                
+            rospy.loginfo(f"Candidate framework index: {self.candidate_framework_index}, Selected framework index: {self.selected_framework_index}")
             
-            rospy.loginfo(f"Selected framework: [{self.selected_framework_index}] -> \'{self.selected_framework_manager.framework_name}\'")
+            
+            #rospy.loginfo(f"Selected framework: [{self.selected_framework_index}] -> \'{self.selected_framework_manager.framework_name}\'")
             
             # Return the dummy callback
             return partial(callback)
