@@ -97,3 +97,42 @@ def draw_pose(frame, landmarks, point_color, line_color):
     
     # Draw all the landmarks
     draw_landmarks(frame, landmarks, point_color, line_color, pose_landmarks_blacklist)
+    
+    
+    
+    
+
+
+
+
+
+
+
+def draw_on_frame(
+    frame,
+    rhl=[],
+    lhl=[],
+    pl=[],
+    rhg='',
+    lhg='',
+    fps=''
+):
+    # De-normalize landmarks
+    height, width = frame.shape[0], frame.shape[1]
+    rhl_pixel = denormalize_landmarks(rhl, width, height)
+    lhl_pixel = denormalize_landmarks(lhl, width, height)
+    pl_pixel = denormalize_landmarks(pl, width, height)
+    
+    # Draw pose
+    draw_pose(frame, pl_pixel, point_color=(0,255,0), line_color=(128,128,128))
+    
+    # Draw hands
+    draw_hand(frame, rhl_pixel, point_color=(255,0,0), line_color=(255,255,255))
+    draw_hand(frame, lhl_pixel, point_color=(0,0,255), line_color=(255,255,255))
+    
+    # Add text
+    cv2.putText(frame, f"FPS: {fps:.1f}", (50,50), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,255,0), thickness=2)
+    cv2.putText(frame, f"Left: {lhg}", (50,100), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
+    cv2.putText(frame, f"Right: {rhg}", (50,150), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness=2)
+    
+    

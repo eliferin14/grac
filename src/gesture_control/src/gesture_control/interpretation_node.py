@@ -8,7 +8,6 @@ from gesture_utils.ros_utils import convert_ROSpoints_to_matrix
 from gesture_utils.framework_selector import FrameworkSelector
 
 #from iris_sami.src.sami.arm import Arm, EzPose
-from sami.arm import Arm, EzPose
 
 
 

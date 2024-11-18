@@ -367,8 +367,8 @@ class GestureDetector():
         # Reset outputs to None
         self.right_hand_gesture, self.left_hand_gesture = None, None            
         self.right_hand_landmarks, self.left_hand_landmarks = None, None       
-        self.right_hand_landmarks_matrix, self.left_hand_landmarks_matrix = None, None
-        self.right_hand_world_landmarks_matrix, self.left_hand_world_landmarks_matrix = None, None
+        self.right_hand_landmarks_matrix, self.left_hand_landmarks_matrix = [], []
+        self.right_hand_world_landmarks_matrix, self.left_hand_world_landmarks_matrix = [], []
         self.right_hand_data, self.left_hand_data = HandData(), HandData()
         
         # Process the results
@@ -433,7 +433,7 @@ class GestureDetector():
         results = self.pose_landmarker.process(rgb_frame)
         
         # Reset results to None
-        self.pose_landmarks_matrix, self.pose_world_landmarks_matrix = None, None
+        self.pose_landmarks_matrix, self.pose_world_landmarks_matrix = [], []
         
         if results.pose_landmarks is None: return
         
