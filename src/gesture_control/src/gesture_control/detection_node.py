@@ -80,7 +80,7 @@ def gesture_detection():
     
     # Start the node
     rospy.init_node('gesture_detector', anonymous=True)
-    rate = rospy.Rate(50)  # 10hz
+    rate = rospy.Rate(10)
     
     # Initialize the publishers
     draw_publisher = rospy.Publisher('draw_topic', draw, queue_size=1)
@@ -142,7 +142,11 @@ def gesture_detection():
                 rhl=detector.right_hand_landmarks_matrix,
                 lhl=detector.left_hand_landmarks_matrix,
                 pl=detector.pose_landmarks_matrix,
-                fps=fps
+                fps=fps,
+                framework_names=interpreter.framework_names,
+                selected_framework=interpreter.selected_framework_index,
+                min_theta=interpreter.menu_manager.min_theta,
+                max_theta=interpreter.menu_manager.max_theta
             )        
             
             # Convert frame to ROS image

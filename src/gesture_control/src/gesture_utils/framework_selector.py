@@ -24,16 +24,20 @@ class FrameworkSelector():
         BaseFrameworkManager(),
         BaseFrameworkManager(),
         BaseFrameworkManager(),
-        JointFrameworkManager()
+        #JointFrameworkManager()
     ]
     
     framework_names = [ fw.framework_name for fw in framework_managers]
+    
+    
+    
     
     def __init__(self):
         
         # The default framework is the base framework
         # NOTE for testing purposes the default is the joint control
         self.selected_framework_manager = self.framework_managers[0]
+        self.selected_framework_index = 0
         
         
         
@@ -55,6 +59,7 @@ class FrameworkSelector():
         
         # If the left hand is doing the L gesture, call the menu selection
         if kwargs['lhg'] == 'L':
+            
             if self.selected_framework_manager != self.menu_manager:
                 rospy.loginfo("Open menu")
             
@@ -62,12 +67,12 @@ class FrameworkSelector():
             kwargs['fwn'] = self.framework_names
             
             # Call the interpretation function of the menu
-            selected_framework_index, callback = self.menu_manager.interpret_gestures(*args, **kwargs)
+            self.selected_framework_index, callback = self.menu_manager.interpret_gestures(*args, **kwargs)
             
             # Select the desired framework
-            self.selected_framework_manager = self.framework_managers[selected_framework_index]
+            self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
             
-            rospy.loginfo(f"Selected framework: [{selected_framework_index}] -> \'{self.selected_framework_manager.framework_name}\'")
+            rospy.loginfo(f"Selected framework: [{self.selected_framework_index}] -> \'{self.selected_framework_manager.framework_name}\'")
             
             # Return the dummy callback
             return partial(callback)
@@ -77,3 +82,4 @@ class FrameworkSelector():
         callback = self.selected_framework_manager.interpret_gestures(*args, **kwargs)
         
         return callback
+        

@@ -21,8 +21,8 @@ class MenuFrameworkManager(BaseFrameworkManager):
     
     framework_name = "Menu"
     
-    min_theta = np.pi/4
-    max_theta = np.pi * 3.0/4
+    min_theta = np.pi * 3/8
+    max_theta = np.pi * 7/8
     range_theta = max_theta - min_theta
     
     def interpret_gestures(self, *args, **kwargs):
@@ -42,7 +42,7 @@ class MenuFrameworkManager(BaseFrameworkManager):
         sector_limits = [ i*sector_width for i in range(fw_number) ]
         
         # Calculate angle of the finger
-        wrist_base = lhl[5]
+        wrist_base = lhl[0]
         index_tip = lhl[8]
         dx = index_tip[0] - wrist_base[0]
         dy = index_tip[1] - wrist_base[1]

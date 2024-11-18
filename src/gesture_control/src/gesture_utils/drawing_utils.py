@@ -101,6 +101,50 @@ def draw_pose(frame, landmarks, point_color, line_color):
     
     
     
+    
+def draw_menu(frame, framework_names, selected_framework, lhl_pixel, min_theta=np.pi/4, max_theta=np.pi*3/4, scaling=1.3, radius=15, color=(0,0,0), selected_color=(0,0,255)):
+    
+    if len(lhl_pixel) == 0: return
+    
+    #
+    range_theta = max_theta - min_theta
+        
+    # Given the number of selectable frameworks, calculate the angle sectors
+    fw_number = len(framework_names)
+    if fw_number == 0: return
+    
+    sector_width = range_theta / fw_number
+    sector_limits = [ i*sector_width for i in range(fw_number) ]
+    
+    # Calculate the length of the index and the desired distance
+    palm_origin = lhl_pixel[0]
+    index_tip = lhl_pixel[8]
+    l = scaling * np.linalg.norm( index_tip-palm_origin )
+    
+    # Calculate the coordinates where to draw the circles
+    for i, name in enumerate(framework_names):
+        
+        theta = min_theta + sector_width/2 + i*sector_width
+        
+        x = palm_origin[0] + int( l * np.cos(theta) )
+        y = palm_origin[1] - int( l * np.sin(theta) )   # y axis is positive downwards!
+        #print((selected_framework, x,y))
+        
+        # Draw circles
+        fill_color = selected_color if (fw_number-i-1) == selected_framework else color
+        border_color = selected_color if (fw_number-i-1) != selected_framework else color
+        
+        cv2.circle(frame, (x,y), radius, fill_color, thickness=-1)
+        cv2.circle(frame, (x,y), radius, border_color, thickness=3)
+        
+    # Draw the name of the selected framework
+    cv2.putText(frame, framework_names[selected_framework], (palm_origin[0],palm_origin[1]), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
+        
+        
+    
+    
+    
+    
 
 
 
@@ -115,7 +159,11 @@ def draw_on_frame(
     pl=[],
     rhg='',
     lhg='',
-    fps=''
+    fps='',
+    framework_names=[],
+    selected_framework=0,
+    min_theta=np.pi/4,
+    max_theta=np.pi*3/4
 ):
     # De-normalize landmarks
     height, width = frame.shape[0], frame.shape[1]
@@ -134,5 +182,8 @@ def draw_on_frame(
     cv2.putText(frame, f"FPS: {fps:.1f}", (50,50), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,255,0), thickness=2)
     cv2.putText(frame, f"Left: {lhg}", (50,100), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
     cv2.putText(frame, f"Right: {rhg}", (50,150), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness=2)
+    
+    # Draw the menu
+    draw_menu(frame, framework_names, selected_framework, lhl_pixel, min_theta, max_theta)
     
     
