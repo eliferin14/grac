@@ -99,6 +99,65 @@ def draw_pose(frame, landmarks, point_color, line_color):
     draw_landmarks(frame, landmarks, point_color, line_color, pose_landmarks_blacklist)
     
     
+def draw_centered_text(image, text, center, font_scale, color, thickness=1, font=cv2.FONT_HERSHEY_SIMPLEX):
+    """
+    Draws text centered at the specified point on an image.
+
+    Parameters:
+    - image: The image on which to draw (numpy array).
+    - text: The text to draw (string).
+    - center: A tuple (x, y) representing the center point for the text (int, int).
+    - font_scale: Font scale factor that affects the size of the text (float).
+    - color: Text color (BGR tuple, e.g., (255, 255, 255)).
+    - thickness: Thickness of the text stroke (int, default is 1).
+    - font: Font type (default is cv2.FONT_HERSHEY_SIMPLEX).
+    """
+    # Get the text size and baseline
+    (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+    
+    # Calculate the bottom-left corner of the text based on the center point
+    origin_x = center[0] - text_width // 2
+    origin_y = center[1] + text_height // 2
+
+    # Draw the text on the image
+    cv2.putText(image, text, (origin_x, origin_y), font, font_scale, color, thickness)
+
+
+
+def draw_text_with_background(image, text, text_color, bg_color, font_scale, center, thickness=2, font=cv2.FONT_HERSHEY_SIMPLEX):
+    """
+    Draws text with a background rectangle centered at a specified point on an image.
+
+    Parameters:
+    - image: The image on which to draw (numpy array).
+    - text: The text to draw (string).
+    - text_color: Text color (BGR tuple, e.g., (255, 255, 255)).
+    - bg_color: Background rectangle color (BGR tuple, e.g., (0, 0, 0)).
+    - font_scale: Font scale factor that affects the size of the text (float).
+    - center: A tuple (x, y) representing the center point for the text (int, int).
+    - thickness: Thickness of the text stroke (int, default is 1).
+    - font: Font type (default is cv2.FONT_HERSHEY_SIMPLEX).
+    """
+    # Get the text size and baseline
+    (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+    
+    # Calculate the bottom-left corner of the text
+    origin_x = center[0] - text_width // 2
+    origin_y = center[1] + text_height // 2
+
+    # Define the rectangle coordinates
+    top_left = (origin_x - 5, origin_y - text_height - baseline - 5)  # Add some padding
+    bottom_right = (origin_x + text_width + 5, origin_y + baseline + 5)
+
+    # Draw the background rectangle
+    cv2.rectangle(image, top_left, bottom_right, bg_color, -1)  # Filled rectangle
+    cv2.rectangle(image, top_left, bottom_right, text_color, thickness)  # Filled rectangle
+
+    # Draw the centered text
+    draw_centered_text(image, text, center, font_scale, text_color, thickness, font)
+
+
+    
     
     
     
@@ -113,7 +172,7 @@ def draw_menu(
     scaling=1.3, 
     radius=15, 
     candidate_color=(0,0,255),
-    selected_color=(255,64,0)
+    selected_color=(255,128,0)
 ):
     
     if len(lhl_pixel) == 0: return
@@ -158,7 +217,7 @@ def draw_menu(
         cv2.circle(frame, (x,y), radius, border_color, thickness=3)
         
     # Draw the name of the selected framework
-    cv2.putText(frame, framework_names[candidate_framework], (palm_origin[0],palm_origin[1]), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
+    draw_text_with_background(frame, framework_names[candidate_framework], text_color=(0,0,0), bg_color=candidate_color, font_scale=1, center=(palm_origin[0],palm_origin[1]))
         
         
     
@@ -203,6 +262,7 @@ def draw_on_frame(
     cv2.putText(frame, f"FPS: {fps:.1f}", (50,50), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,255,0), thickness=2)
     cv2.putText(frame, f"Left: {lhg}", (50,100), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
     cv2.putText(frame, f"Right: {rhg}", (50,150), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness=2)
+    cv2.putText(frame, f"Current framework: {framework_names[selected_framework]}", (50,200), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,128,0), thickness=2)
     
     # Draw the menu
     draw_menu(frame, framework_names, candidate_framework, selected_framework, lhl_pixel, min_theta, max_theta)

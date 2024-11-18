@@ -27,7 +27,6 @@ class FrameworkSelector():
         #JointFrameworkManager()
     ]
     
-    framework_names = [ fw.framework_name for fw in framework_managers]
     
     
     
@@ -38,6 +37,13 @@ class FrameworkSelector():
         # NOTE for testing purposes the default is the joint control
         self.selected_framework_manager = self.framework_managers[0]
         self.selected_framework_index, self.candidate_framework_index = 0, 0
+        
+        for i, f in enumerate(self.framework_managers):
+            if f.framework_name == "Base":
+                f.framework_name = f"Framework {i}"
+                       
+        self.framework_names = [ fw.framework_name for fw in self.framework_managers]        
+                
         
         
         
