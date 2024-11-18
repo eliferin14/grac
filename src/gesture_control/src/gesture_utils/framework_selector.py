@@ -62,7 +62,7 @@ class FrameworkSelector():
             kwargs['fwn'] = self.framework_names
             
             # Call the interpretation function of the menu
-            selected_framework_index = self.menu_manager.interpret_gestures(*args, **kwargs)
+            selected_framework_index, callback = self.menu_manager.interpret_gestures(*args, **kwargs)
             
             # Select the desired framework
             self.selected_framework_manager = self.framework_managers[selected_framework_index]
@@ -70,7 +70,7 @@ class FrameworkSelector():
             rospy.loginfo(f"Selected framework: [{selected_framework_index}] -> \'{self.selected_framework_manager.framework_name}\'")
             
             # Return the dummy callback
-            return partial(dummy_callback)
+            return partial(callback)
         
         
         # Call the framework manager and do something

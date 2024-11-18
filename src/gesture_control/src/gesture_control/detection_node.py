@@ -12,11 +12,12 @@ from sensor_msgs.msg import Image
 
 from gesture_control.msg import draw, plot
 from gesture_utils.gesture_detector import GestureDetector
+from gesture_utils.gesture_detector import GestureDetector
 from gesture_utils.ros_utils import convert_matrix_to_ROSpoints
 from gesture_utils.fps_counter import FPS_Counter
 
 # Find the model directory absolute path
-model_realtive_path = "gesture_utils/training/exported_model"
+model_realtive_path = "src/gesture_utils/training/exported_model"
 package_path = roslib.packages.get_pkg_dir('gesture_control')
 model_absolute_path = file_path = os.path.join(package_path, model_realtive_path)
 
@@ -30,6 +31,10 @@ detector = GestureDetector(
 cam = cv2.VideoCapture(3)
 
 fps_counter = FPS_Counter()
+
+# Define topic names
+plot_topic = "/plot_topic"
+gesture_topic = "/gesture_topic"
 
 def talker():
     

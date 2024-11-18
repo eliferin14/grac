@@ -8,6 +8,14 @@ from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 
 
 
+def draw_menu(frame, **kwargs):
+    print(kwargs['index'])
+    return
+    
+
+
+
+
 
 class MenuFrameworkManager(BaseFrameworkManager):
     
@@ -52,4 +60,13 @@ class MenuFrameworkManager(BaseFrameworkManager):
         # "Reverse" the index: 0 is on the left
         index = fw_number - s
         
-        return index
+        # Prepare parameter list for the drawing function
+        draw_kwargs = {
+            'index':index
+        }
+        
+        return index,   partial(
+                            draw_menu,
+                            frame=None,
+                            **draw_kwargs
+                        )

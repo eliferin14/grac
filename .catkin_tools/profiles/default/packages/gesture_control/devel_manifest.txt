@@ -23,4 +23,5 @@ gesture_control
 /home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_control/msg/__init__.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_control/msg/__init__.py
 /home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_control/msg/_draw.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_control/msg/_draw.py
 /home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_control/msg/_plot.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_control/msg/_plot.py
+/home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_utils/__init__.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_utils/__init__.py
 /home/eli/grac_ros/devel/.private/gesture_control/lib/pkgconfig/gesture_control.pc /home/eli/grac_ros/devel/lib/pkgconfig/gesture_control.pc
