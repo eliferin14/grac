@@ -24,7 +24,7 @@ class FrameworkSelector():
         BaseFrameworkManager(),
         BaseFrameworkManager(),
         BaseFrameworkManager(),
-        #JointFrameworkManager()
+        JointFrameworkManager()
     ]
     
     

@@ -265,6 +265,6 @@ def draw_on_frame(
     cv2.putText(frame, f"Current framework: {framework_names[selected_framework]}", (50,200), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,128,0), thickness=2)
     
     # Draw the menu
-    draw_menu(frame, framework_names, candidate_framework, selected_framework, lhl_pixel, min_theta, max_theta)
+    if lhg == 'L': draw_menu(frame, framework_names, candidate_framework, selected_framework, lhl_pixel, min_theta, max_theta)
     
     

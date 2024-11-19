@@ -34,10 +34,6 @@ cam = cv2.VideoCapture(3)
 # Initialise FPS counter
 fps_counter = FPS_Counter()
 
-# Define topic names
-plot_topic = "/plot_topic"
-gesture_topic = "/gesture_topic"
-
 
 
 
@@ -134,7 +130,7 @@ def gesture_detection():
         # Check if the drawing node is listening
         if draw_publisher.get_num_connections() > 0:
         
-            # Draw stuff on the frame
+            # Draw stuff on the frame 
             draw_on_frame(
                 frame=frame,
                 rhg=rh_gesture,
