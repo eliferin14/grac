@@ -22,7 +22,10 @@ def draw_callback(msg):
     
     # Show the image
     cv2.imshow("Live feed", frame)
-    cv2.waitKey(1)
+    
+    # If 'q' is pressed, kill the node
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        rospy.signal_shutdown("User requested shutdown.")
     
     
 

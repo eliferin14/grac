@@ -5,12 +5,6 @@ import numpy as np
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 
 
-
-
-
-def draw_menu(frame, **kwargs):
-    print(kwargs['index'])
-    return
     
 
 
@@ -69,8 +63,4 @@ class MenuFrameworkManager(BaseFrameworkManager):
             'index':index
         }
         
-        return index, rh_confirmation,  partial(
-                                            draw_menu,
-                                            frame=None,
-                                            **draw_kwargs
-                                        )
+        return index, rh_confirmation,  partial(super().dummy_callback)

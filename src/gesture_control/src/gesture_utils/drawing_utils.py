@@ -157,11 +157,25 @@ def draw_text_with_background(image, text, text_color, bg_color, font_scale, cen
     draw_centered_text(image, text, center, font_scale, text_color, thickness, font)
 
 
+
+
+def draw_menu_linear(
+    frame,
+    names,
+    candidate,
+    selected,
+    hl_pixel,
+    dot_size,
+    dot_distance,
+    candidate_color,
+    selected_color,
+    
+):
+    return
     
     
     
-    
-def draw_menu(
+def draw_menu_arc(
     frame, 
     framework_names, 
     candidate_framework,
@@ -265,6 +279,6 @@ def draw_on_frame(
     cv2.putText(frame, f"Current framework: {framework_names[selected_framework]}", (50,200), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,128,0), thickness=2)
     
     # Draw the menu
-    if lhg == 'L': draw_menu(frame, framework_names, candidate_framework, selected_framework, lhl_pixel, min_theta, max_theta)
+    #if lhg == 'L': draw_menu_arc(frame, framework_names, candidate_framework, selected_framework, lhl_pixel, min_theta, max_theta)
     
     

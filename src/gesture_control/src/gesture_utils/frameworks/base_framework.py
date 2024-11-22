@@ -7,13 +7,6 @@ from sami.arm import Arm, EzPose
 
 
 
-def dummy_callback(p1, p2):
-    rospy.loginfo(f"Right: {p1}, Left: {p2}")
-
-
-
-
-
 
 class BaseFrameworkManager:
     

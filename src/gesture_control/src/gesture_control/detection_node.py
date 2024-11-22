@@ -25,7 +25,7 @@ model_absolute_path = file_path = os.path.join(package_path, model_realtive_path
 # Define the detector object
 detector = GestureDetector(
     model_absolute_path,
-    0.3
+    0.2
 )
 
 # Open camera
@@ -48,20 +48,6 @@ arm = Arm('ur10e_moveit', group='manipulator')
 # Create the framework selector
 from gesture_utils.framework_selector import FrameworkSelector
 interpreter = FrameworkSelector()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -112,6 +98,7 @@ def gesture_detection():
         
         # Call the gesture interpreter
         callback = interpreter.interpret_gestures(
+            frame=frame,
             arm=arm,
             rhg=rh_gesture,
             lhg=lh_gesture,

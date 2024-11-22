@@ -4,7 +4,9 @@ from functools import partial
 
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 from gesture_utils.frameworks.joint_control import JointFrameworkManager
+from gesture_utils.frameworks.cartesian_control import CartesianFrameworkManager
 from gesture_utils.frameworks.menu_framework import MenuFrameworkManager
+from gesture_utils.visual_menu import MenuHandler
 
 from sami.arm import Arm, EzPose
 
@@ -17,13 +19,15 @@ def dummy_callback():
 
 class FrameworkSelector():
     
+    main_menu_handler = MenuHandler()
+    
     menu_manager = MenuFrameworkManager()
     
     framework_managers = [
         BaseFrameworkManager(),
         BaseFrameworkManager(),
         BaseFrameworkManager(),
-        BaseFrameworkManager(),
+        CartesianFrameworkManager(),
         JointFrameworkManager()
     ]
     
@@ -61,10 +65,21 @@ class FrameworkSelector():
             _type_: _description_
         """        ''''''
         
-        #print(kwargs)
+        # If left hand is L open the framework selection menu
+        if kwargs['lhg'] == 'L':
+            
+            # Call the menu_handler            
+            self.selected_framework_index = self.main_menu_handler.menu_iteration(kwargs['lhl'], self.framework_names, kwargs['rhg']=='pick')
+            
+            return partial(self.main_menu_handler.draw_menu, frame=kwargs['frame'])
+        
+        else:
+            self.main_menu_handler.reset()
+        
+        #return partial(dummy_callback)
         
         # If the left hand is doing the L gesture, call the menu selection
-        if kwargs['lhg'] == 'L':
+        if kwargs['lhg'] == 'L' and False:
             
             if self.selected_framework_manager != self.menu_manager:
                 rospy.loginfo("Open menu")
@@ -94,5 +109,6 @@ class FrameworkSelector():
         # Call the framework manager and do something
         callback = self.selected_framework_manager.interpret_gestures(*args, **kwargs)
         
+        # Note: no need to use partial
         return callback
         
