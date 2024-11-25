@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   sensor_msgs
   message_generation
+  actionlib_msgs
 )
 
 catkin_python_setup()
@@ -22,7 +23,9 @@ generate_messages(
   std_msgs
   geometry_msgs
   sensor_msgs
+  actionlib_msgs
 )
+
 
 catkin_package(
 #  INCLUDE_DIRS include
