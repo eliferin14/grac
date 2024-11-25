@@ -1,0 +1,27 @@
+gesture_control
+/home/eli/grac_ros/devel/.private/gesture_control/cmake.lock /home/eli/grac_ros/devel/./cmake.lock
+/home/eli/grac_ros/devel/.private/gesture_control/share/roseus/ros/gesture_control/manifest.l /home/eli/grac_ros/devel/share/roseus/ros/gesture_control/manifest.l
+/home/eli/grac_ros/devel/.private/gesture_control/share/roseus/ros/gesture_control/msg/draw.l /home/eli/grac_ros/devel/share/roseus/ros/gesture_control/msg/draw.l
+/home/eli/grac_ros/devel/.private/gesture_control/share/roseus/ros/gesture_control/msg/plot.l /home/eli/grac_ros/devel/share/roseus/ros/gesture_control/msg/plot.l
+/home/eli/grac_ros/devel/.private/gesture_control/share/gesture_control/cmake/gesture_controlConfig.cmake /home/eli/grac_ros/devel/share/gesture_control/cmake/gesture_controlConfig.cmake
+/home/eli/grac_ros/devel/.private/gesture_control/share/gesture_control/cmake/gesture_controlConfig-version.cmake /home/eli/grac_ros/devel/share/gesture_control/cmake/gesture_controlConfig-version.cmake
+/home/eli/grac_ros/devel/.private/gesture_control/share/gesture_control/cmake/gesture_control-msg-paths.cmake /home/eli/grac_ros/devel/share/gesture_control/cmake/gesture_control-msg-paths.cmake
+/home/eli/grac_ros/devel/.private/gesture_control/share/gesture_control/cmake/gesture_control-msg-extras.cmake /home/eli/grac_ros/devel/share/gesture_control/cmake/gesture_control-msg-extras.cmake
+/home/eli/grac_ros/devel/.private/gesture_control/share/common-lisp/ros/gesture_control/msg/draw.lisp /home/eli/grac_ros/devel/share/common-lisp/ros/gesture_control/msg/draw.lisp
+/home/eli/grac_ros/devel/.private/gesture_control/share/common-lisp/ros/gesture_control/msg/gesture_control-msg.asd /home/eli/grac_ros/devel/share/common-lisp/ros/gesture_control/msg/gesture_control-msg.asd
+/home/eli/grac_ros/devel/.private/gesture_control/share/common-lisp/ros/gesture_control/msg/_package.lisp /home/eli/grac_ros/devel/share/common-lisp/ros/gesture_control/msg/_package.lisp
+/home/eli/grac_ros/devel/.private/gesture_control/share/common-lisp/ros/gesture_control/msg/plot.lisp /home/eli/grac_ros/devel/share/common-lisp/ros/gesture_control/msg/plot.lisp
+/home/eli/grac_ros/devel/.private/gesture_control/share/common-lisp/ros/gesture_control/msg/_package_draw.lisp /home/eli/grac_ros/devel/share/common-lisp/ros/gesture_control/msg/_package_draw.lisp
+/home/eli/grac_ros/devel/.private/gesture_control/share/common-lisp/ros/gesture_control/msg/_package_plot.lisp /home/eli/grac_ros/devel/share/common-lisp/ros/gesture_control/msg/_package_plot.lisp
+/home/eli/grac_ros/devel/.private/gesture_control/share/gennodejs/ros/gesture_control/_index.js /home/eli/grac_ros/devel/share/gennodejs/ros/gesture_control/_index.js
+/home/eli/grac_ros/devel/.private/gesture_control/share/gennodejs/ros/gesture_control/msg/draw.js /home/eli/grac_ros/devel/share/gennodejs/ros/gesture_control/msg/draw.js
+/home/eli/grac_ros/devel/.private/gesture_control/share/gennodejs/ros/gesture_control/msg/plot.js /home/eli/grac_ros/devel/share/gennodejs/ros/gesture_control/msg/plot.js
+/home/eli/grac_ros/devel/.private/gesture_control/share/gennodejs/ros/gesture_control/msg/_index.js /home/eli/grac_ros/devel/share/gennodejs/ros/gesture_control/msg/_index.js
+/home/eli/grac_ros/devel/.private/gesture_control/include/gesture_control/plot.h /home/eli/grac_ros/devel/include/gesture_control/plot.h
+/home/eli/grac_ros/devel/.private/gesture_control/include/gesture_control/draw.h /home/eli/grac_ros/devel/include/gesture_control/draw.h
+/home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_control/__init__.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_control/__init__.py
+/home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_control/msg/__init__.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_control/msg/__init__.py
+/home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_control/msg/_draw.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_control/msg/_draw.py
+/home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_control/msg/_plot.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_control/msg/_plot.py
+/home/eli/grac_ros/devel/.private/gesture_control/lib/python3/dist-packages/gesture_utils/__init__.py /home/eli/grac_ros/devel/lib/python3/dist-packages/gesture_utils/__init__.py
+/home/eli/grac_ros/devel/.private/gesture_control/lib/pkgconfig/gesture_control.pc /home/eli/grac_ros/devel/lib/pkgconfig/gesture_control.pc
