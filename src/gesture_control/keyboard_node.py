@@ -7,6 +7,7 @@ import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import time
+from gesture_utils.trajectory_buffer import TrajectoryBuffer
 
 # Initialize ROS node
 rospy.init_node('keyboard_listener', anonymous=True)
@@ -34,6 +35,9 @@ client.wait_for_server()
 trajectory = JointTrajectory()
 trajectory.joint_names = joint_names
 
+# Define the trajectory buffer
+trajectory_buffer = TrajectoryBuffer(buffer_length=5)
+
 # Send the initial goal with no points
 goal = FollowJointTrajectoryGoal()
 goal.trajectory = trajectory
@@ -44,6 +48,26 @@ client.send_goal(goal)
 client.wait_for_result()
 
 rospy.loginfo("Initial trajectory sent, now sending incremental points...")
+
+
+
+
+
+""" # Inverse kinematics solver
+from moveit_commander import MoveGroupCommander, roscpp_initialize
+from geometry_msgs.msg import Pose
+
+group = MoveGroupCommander("manipulator")   # Name found in iris_ur10e/ur10_e_moveit_config/ur10e.srdf -> group name
+target_pose = Pose()
+group.set_pose_target(target_pose)
+group.get_ik
+plan = group.plan()
+if plan and len(plan.joint_trajectory.points) > 0:
+    # Extract the joint values from the plan
+    joint_values = plan.joint_trajectory.points[-1].positions
+    print("Joint configuration for the given pose:", joint_values)
+else:
+    print("Failed to find an IK solution.") """
 
 
 
@@ -64,7 +88,23 @@ def on_press(key):
     except AttributeError:
         # Handle special keys
         rospy.loginfo(f'Special key {key} pressed')
-        pub.publish(f'Special key {key} pressed')
+        pub.publish(f'Special key {key} pressed')        
+        
+        
+    
+    
+    # Check result: if the trajectory have been completed, clear the buffer
+    result = client.get_result()
+    print(result)
+    if result is not None:
+        if result.error_code == result.SUCCESSFUL:
+            print("Trajectory completed successfully!")
+            trajectory_buffer.clear()
+        else:
+            print("Trajectory failed with error code:", result.error_code)
+            
+            
+            
         
     # Get current joint configuration
     current_joints = arm.get_joints()
@@ -101,14 +141,21 @@ def on_press(key):
         joint_target[4] -= angle_step
     elif key.char == 'Y':
         joint_target[5] -= angle_step
+    else:
+        return
         
     # Create a trajectory point
     point = JointTrajectoryPoint()
     point.positions = joint_target
-    point.time_from_start = rospy.Duration(0.1)
+    point.time_from_start = rospy.Duration(0.01)
+    
+    # Add the point to the trajectory 
+    trajectory_buffer.add_point(joint_target, 0.5)
     
     # Update trajectory object
     trajectory.points = [point]
+    #trajectory.points = trajectory_buffer.get_points()
+    #print(trajectory.points)
     
     # Update goal and send
     goal.trajectory = trajectory
