@@ -7,9 +7,10 @@ import numpy as np
 import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
+from geometry_msgs.msg import PoseStamped
 import time
 from gesture_utils.trajectory_buffer import TrajectoryBuffer
-from gesture_utils.ik_utils import IK
 import argparse
 from tf.transformations import quaternion_multiply, quaternion_about_axis
 
@@ -34,9 +35,6 @@ client.wait_for_server()
 # Create arm object
 from sami.arm import Arm, EzPose
 arm = Arm('ur10e_moveit', group='manipulator')
-
-# Inverse kinematics
-ik_solver = IK()
 
 # Define the trajectory object
 trajectory = JointTrajectory()
@@ -137,8 +135,17 @@ def on_press(key):
         pose_target.orientation.z = q_final[2]
         pose_target.orientation.w = q_final[3]
         
+        # Call the ROS service for inverse kinematics
+        compute_ik = rospy.ServiceProxy('/compute_ik', GetPositionIK)
+        request = GetPositionIKRequest()
+        request.ik_request.group_name = "manipulator"
+        request.ik_request.pose_stamped.header.frame_id = "base_link"
+        request.ik_request.pose_stamped.pose = pose_target
+        
+        response = compute_ik(request)
+        
         # Compute inverse kinematics
-        joint_target = ik_solver.solve_ik(pose_target)
+        joint_target = response.solution.joint_state.position[:6]
         point.positions = joint_target
         
     else:
