@@ -4,6 +4,7 @@ from functools import partial
 
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 from gesture_utils.frameworks.joint_control import JointFrameworkManager
+from gesture_utils.frameworks.joint_action import JointActionFrameworkManager
 from gesture_utils.frameworks.cartesian_control import CartesianFrameworkManager
 from gesture_utils.frameworks.menu_framework import MenuFrameworkManager
 from gesture_utils.visual_menu import MenuHandler
@@ -26,9 +27,9 @@ class FrameworkSelector():
     framework_managers = [
         BaseFrameworkManager(),
         BaseFrameworkManager(),
-        BaseFrameworkManager(),
         CartesianFrameworkManager(),
-        JointFrameworkManager()
+        JointFrameworkManager(),
+        JointActionFrameworkManager()
     ]
     
     
@@ -42,11 +43,15 @@ class FrameworkSelector():
         self.selected_framework_index, self.candidate_framework_index = 4, 0
         self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
         
+        # Just change the name of empty frameworks
         for i, f in enumerate(self.framework_managers):
             if f.framework_name == "Base":
                 f.framework_name = f"Framework {i}"
                        
-        self.framework_names = [ fw.framework_name for fw in self.framework_managers]        
+        # Extract the framework names
+        self.framework_names = [ fw.framework_name for fw in self.framework_managers]      
+        
+        #   
                 
         
         

@@ -22,6 +22,7 @@ def get_joint_limits(arm:Arm, index):
     joint_limits = robot.get_joint(joint_name).bounds()
     
     return joint_limits
+
     
 
 class JointFrameworkManager(BaseFrameworkManager):

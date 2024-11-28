@@ -47,7 +47,6 @@ arm = Arm('ur10e_moveit', group='manipulator')
 
 # Create the framework selector
 from gesture_utils.framework_selector import FrameworkSelector
-interpreter = FrameworkSelector()
 
 
 
@@ -63,6 +62,9 @@ def gesture_detection():
     # Start the node
     rospy.init_node('gesture_detector', anonymous=True)
     rate = rospy.Rate(10)
+    
+    # Create the framework selector
+    interpreter = FrameworkSelector()
     
     # Initialize the publishers
     draw_publisher = rospy.Publisher('draw_topic', draw, queue_size=1)
