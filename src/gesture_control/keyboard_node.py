@@ -35,17 +35,13 @@ client.wait_for_server()
 # Create arm object
 from sami.arm import Arm, EzPose
 arm = Arm('ur10e_moveit', group='manipulator')
+joint_names = arm.arm_interface.moveg.get_active_joints()
+
+print(joint_names)
+print(arm.get_joints())
 
 # Define the trajectory object
 trajectory = JointTrajectory()
-joint_names = [
-      "shoulder_pan_joint",
-      "shoulder_lift_joint",
-      "elbow_joint",
-      "wrist_1_joint",
-      "wrist_2_joint",
-      "wrist_3_joint"
-]
 trajectory.joint_names = joint_names
 
 # Send the initial goal with no points

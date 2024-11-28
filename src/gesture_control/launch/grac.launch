@@ -1,0 +1,11 @@
+<launch>
+    <!-- Node 1 -->
+    <node pkg="gesture_control" type="detection_node.py" name="detection_node" output="screen">
+        <!-- Add any parameters or arguments here -->
+    </node>
+
+    <!-- Node 2 -->
+    <node pkg="gesture_control" type="drawing_node.py" name="drawing_node" output="screen">
+        <!-- Add any parameters or arguments here -->
+    </node>
+</launch>

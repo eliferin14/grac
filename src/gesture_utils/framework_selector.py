@@ -39,8 +39,8 @@ class FrameworkSelector():
         
         # The default framework is the base framework
         # NOTE for testing purposes the default is the joint control
-        self.selected_framework_manager = self.framework_managers[0]
-        self.selected_framework_index, self.candidate_framework_index = 0, 0
+        self.selected_framework_index, self.candidate_framework_index = 4, 0
+        self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
         
         for i, f in enumerate(self.framework_managers):
             if f.framework_name == "Base":
@@ -70,6 +70,7 @@ class FrameworkSelector():
             
             # Call the menu_handler            
             self.selected_framework_index = self.main_menu_handler.menu_iteration(kwargs['lhl'], self.framework_names, kwargs['rhg']=='pick')
+            self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
             
             return partial(self.main_menu_handler.draw_menu, frame=kwargs['frame'])
         

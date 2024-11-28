@@ -8,8 +8,6 @@ from cv_bridge import CvBridge
 from gesture_control.msg import draw
 
 
-
-
 bridge = CvBridge()
 
 def draw_callback(msg):
@@ -21,7 +19,9 @@ def draw_callback(msg):
     frame = bridge.imgmsg_to_cv2(ros_image, desired_encoding='bgr8')
     
     # Show the image
-    cv2.imshow("Live feed", frame)
+    cv2.namedWindow("Output", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("Output", 800, 600)
+    cv2.imshow("Output", frame)
     
     # If 'q' is pressed, kill the node
     if cv2.waitKey(1) & 0xFF == ord('q'):

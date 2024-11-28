@@ -32,4 +32,4 @@ class BaseFrameworkManager:
         
         arm = kwargs.get('arm')
         
-        return partial(arm.get_joints)
+        return partial(self.dummy_callback)

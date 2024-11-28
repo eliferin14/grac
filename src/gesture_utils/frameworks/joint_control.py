@@ -101,14 +101,9 @@ class JointFrameworkManager(BaseFrameworkManager):
             rospy.loginfo(f"Not moving because old_rhg is {self.old_rhg} but rhg is {rhg}")
             return partial(super().dummy_callback)
         
-        # Get current joint configuration
+        # Get current joint configuration and names
         current_joints = arm.get_joints()
-        
-        # The move_joints function requires a JointState object
-        target_state = JointState()
-        
-        # Get joint name: get_joints() returns a list of names, one for each joint. Note that there are more that 6 "joints" in the movegroup
-        joint_name = arm.arm_interface.moveg.get_joints()[self.selected_joint]
+        joint_names = joint_names = arm.arm_interface.moveg.get_active_joints()
         
         # Define new position for the selected joint
         joint_position = angle + current_joints[self.selected_joint]
@@ -117,20 +112,19 @@ class JointFrameworkManager(BaseFrameworkManager):
         # Assert the joint limits are respected 
         # TODO: try catch or equivalent
         if joint_position < joint_limits[0] or joint_position > joint_limits[1]:
+            rospy.logwarn(f"Joint limits exceeded! {joint_position} not in [{joint_limits[0]}, {joint_limits[1]}]")
             return partial(super().dummy_callback)
         #assert joint_position > joint_limits[0] and joint_position < joint_limits[1]
         
-        # Store the target in the JointState object
-        target_state.name = [joint_name]
-        target_state.position = [joint_position]
+        # Edit the joint position
+        current_joints[self.selected_joint] = joint_position
+        print(current_joints)
+        
+        # Store the target in a JointState object
+        target_state = JointState()
+        target_state.name = joint_names
+        target_state.position = current_joints
         
         # Move 
         return partial(arm.move_joints, joints=target_state)
-        
-        if not self.move_once_flag:
-            #self.move_once_flag = True
-            return partial(arm.move_joints, joints=target_state)
-                
-        # Just to know we are in the correct place
-        return partial(arm.get_joints)
         
