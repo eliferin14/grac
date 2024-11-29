@@ -61,7 +61,7 @@ def gesture_detection():
     
     # Start the node
     rospy.init_node('gesture_detector', anonymous=True)
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(30)
     
     # Create the framework selector
     interpreter = FrameworkSelector()
@@ -93,7 +93,7 @@ def gesture_detection():
         
         # Extract gestures
         rh_gesture, lh_gesture = detector.get_hand_gestures()
-        rospy.loginfo(f"FPS: {fps}")
+        #rospy.loginfo(f"FPS: {fps}")
         
         
         ############# GESTURE INTERPRETATION #############
@@ -101,6 +101,7 @@ def gesture_detection():
         # Call the gesture interpreter
         callback = interpreter.interpret_gestures(
             frame=frame,
+            fps=fps,
             arm=arm,
             rhg=rh_gesture,
             lhg=lh_gesture,
@@ -109,8 +110,8 @@ def gesture_detection():
         )
         
         # Execute the selected callback        
-        rospy.loginfo(f"Selected function {callback.func.__name__}()")
         result = callback()
+        rospy.loginfo(f"Selected function {callback.func.__name__}()    ->     {result}")
         
         
         
@@ -165,7 +166,7 @@ def gesture_detection():
             plot_msg.lh_landmarks = lhwl
             plot_msg.pose_landmarks = pwl
             plot_publisher.publish(plot_msg)
-            rospy.logdebug("Published landmarks to /plot_topic")        
+            rospy.logdebug("Published landmarks to /plot_topic")   
         
         rate.sleep()
         

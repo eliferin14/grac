@@ -12,12 +12,6 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 
 
-# To be substituted with a value from the parameter server
-#angle_step = np.pi / 64
-
-
-
-
 class JointActionFrameworkManager(BaseFrameworkManager):
     
     framework_name = "Joint control (Action)"
@@ -43,9 +37,8 @@ class JointActionFrameworkManager(BaseFrameworkManager):
         self.joint_names = arm.arm_interface.moveg.get_active_joints()
         self.joint_limits = JointActionFrameworkManager.get_joint_limits(arm.arm_interface.robot, self.joint_names)
         
-        # Initialise the variable that remebers previous gesture (of right hand)
+        # Initialise variables
         self.old_rhg = None
-    
         self.selected_joint_index = None
     
     
@@ -57,6 +50,9 @@ class JointActionFrameworkManager(BaseFrameworkManager):
         lhg = kwargs['lhg']
         
         
+        
+        
+        ################ ACTION SELECTION ########################
         
         # The left hand selects the joint
         candidate_selected_joint = np.where(self.gesture_to_joint_list == lhg)[0]
@@ -75,22 +71,10 @@ class JointActionFrameworkManager(BaseFrameworkManager):
         elif rhg == 'two': angle = -self.angle_step      # negative movement
         else: return partial(super().dummy_callback)
         
-        """ # In the first iteration old_rhg is None: change it and return immediately
-        if self.old_rhg is None:
-            self.old_rhg = rhg
-            return partial(super().dummy_callback)
-        
-        # The movement happens only if the previous gesture was 'fist' and the new gesture is 'one' or 'two'
-        if self.old_rhg != 'fist':
-            rospy.loginfo(f"Not moving because old_rhg is {self.old_rhg}")
-            self.old_rhg = rhg
-            return partial(super().dummy_callback)
-        self.old_rhg = rhg  # Save new gesture for next iteration
-        if rhg != 'one' and rhg != 'two':
-            rospy.loginfo(f"Not moving because old_rhg is {self.old_rhg} but rhg is {rhg}")
-            return partial(super().dummy_callback) """
         
         
+        
+        ################# TRAJECTORY DEFINITION ######################
         
         # Get the joint limits
         selected_joint_limits = self.joint_limits[self.selected_joint_index]
@@ -123,6 +107,9 @@ class JointActionFrameworkManager(BaseFrameworkManager):
         # Send the initial goal with no points
         goal = FollowJointTrajectoryGoal()
         goal.trajectory = trajectory
+        
+        
+        
         
         # Return the call to the action server
         return partial(self.client.send_goal, goal=goal)
