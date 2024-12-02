@@ -6,6 +6,7 @@ from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 from gesture_utils.frameworks.joint_control import JointFrameworkManager
 from gesture_utils.frameworks.joint_action import JointActionFrameworkManager
 from gesture_utils.frameworks.cartesian_control import CartesianFrameworkManager
+from gesture_utils.frameworks.cartesian_world_action import CartesianActionFrameworkManager
 from gesture_utils.frameworks.menu_framework import MenuFrameworkManager
 from gesture_utils.visual_menu import MenuHandler
 
@@ -28,6 +29,7 @@ class FrameworkSelector():
         BaseFrameworkManager(),
         BaseFrameworkManager(),
         CartesianFrameworkManager(),
+        CartesianActionFrameworkManager(),
         JointFrameworkManager(),
         JointActionFrameworkManager()
     ]
@@ -40,7 +42,7 @@ class FrameworkSelector():
         
         # The default framework is the base framework
         # NOTE for testing purposes the default is the joint control
-        self.selected_framework_index, self.candidate_framework_index = 4, 0
+        self.selected_framework_index, self.candidate_framework_index = 3, 0
         self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
         
         # Just change the name of empty frameworks

@@ -74,7 +74,7 @@ class JointActionFrameworkManager(BaseFrameworkManager):
         
         
         
-        ################# TRAJECTORY DEFINITION ######################
+        ################# GOAL DEFINITION ######################
         
         # Get the joint limits
         selected_joint_limits = self.joint_limits[self.selected_joint_index]
