@@ -1,9 +1,12 @@
+#!/usr/bin/env python
+
 import rospy
 import numpy as np
 from functools import partial
 
 from sami.arm import Arm
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
+from gesture_utils.frameworks.action_base_framework import ActionClientBaseFramework
 
 import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
@@ -16,7 +19,194 @@ from tf.transformations import quaternion_multiply, quaternion_about_axis, quate
 
 
 
-class CartesianActionFrameworkManager(BaseFrameworkManager):
+
+
+
+
+
+
+
+class CartesianActionFrameworkManager(ActionClientBaseFramework):
+    
+    framework_name = "Cartesian world (Action)"
+    
+    selected_dof_index = None
+    
+    # The rotation matrix is used to extract the rotation axes for rotational movements
+    # In the case of movements with world axes, the rotation matrix is the identity matrix
+    rotation_matrix = np.eye(3)
+    
+    
+    
+    def __init__(self, robot_name="ur10e_moveit", group_name="manipulator", use_ee_frame=False):
+        
+        super().__init__(robot_name, group_name)
+        
+        # This flag indicates if the relative motion is done wrt to world frame or end effector frame
+        self.use_ee_frame = use_ee_frame
+        
+        # Initialise the service caller
+        self.ik_service = rospy.ServiceProxy('/compute_ik', GetPositionIK)
+    
+    
+    
+    def interpret_gestures(self, *args, **kwargs):
+        
+        # Extract parameters from kwargs
+        rhg = kwargs['rhg']
+        lhg = kwargs['lhg']
+        
+        
+        
+        
+        
+        
+        ################ ACTION SELECTION ########################
+        
+        # The left hand selects the joint
+        candidate_selected_dof = np.where(self.left_gestures_list == lhg)[0]
+        
+        # If no joint is selected (left hand is not in any of the fist->palm gestures), do nothing
+        if candidate_selected_dof.size == 0:
+            return partial(super().dummy_callback)
+        
+        # Change selected joint
+        if candidate_selected_dof != self.selected_dof_index: rospy.loginfo(f"DoF {candidate_selected_dof[0]} selected")
+        self.selected_dof_index = candidate_selected_dof[0]
+        
+        # The right hand selects the vector/angle
+        angle_step = 0
+        position_step = 0
+        if rhg == 'one': 
+            angle_step = self.angle_step         # positive movement
+            position_step = self.position_step
+        elif rhg == 'two': 
+            angle_step = -self.angle_step      # negative movement
+            position_step = -self.position_step
+        else: return partial(super().dummy_callback)
+        
+        
+        
+        
+        
+        
+        
+        ################# INVERSE KINEMATICS #######################
+        
+        # Get current pose
+        current_pose = self.group_commander.get_current_pose().pose
+        pose_target = current_pose
+        current_position = current_pose.position
+        current_orientation = current_pose.orientation
+        rospy.logdebug(f"Current pose: {current_pose}")
+        
+        # Get position vector from the current pose
+        p_current = [current_position.x, current_position.y, current_position.z]
+        
+        # Get quaternion of the current pose
+        q_current = [current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w]
+        
+        # If the end effector frame is selected, update the rotation matrix
+        if self.use_ee_frame:
+            self.rotation_matrix = quaternion_matrix(q_current)[:3, :3]
+        
+        # Initialise vectors to calculate the translation
+        p_final = p_current
+        
+        # Initialise quaternions to calculate the rotation
+        q_final = q_current
+        
+        rospy.logdebug(f"DoF: {self.selected_dof_index}")
+        
+        # Based on the selected joint translate or rotate
+        if self.selected_dof_index < 3 and self.selected_dof_index >= 0:        # Linear movement
+            
+            # Select the translation axis (x, y or z) from the relative orientation matrix
+            translation_axis = self.rotation_matrix[:, self.selected_dof_index]
+            
+            # Calculate the translation vector and the final position
+            p_translation = translation_axis * position_step
+            rospy.logdebug(f"Translation axis: {translation_axis}, translation vector: {p_translation}")
+            
+            p_final = p_current + p_translation
+            
+            rospy.loginfo(f"Current position: {p_current}, Translation axis: {translation_axis}, vector: {p_translation}, target position: {p_final}")
+            
+        elif self.selected_dof_index < 6 and self.selected_dof_index >= 3:
+            
+            # Select the rotation axis from the relative orientation matrix
+            rotation_axis = self.rotation_matrix[:, self.selected_dof_index - 3 ]    
+                
+            # Calculate the rotation quaternion and final quaternion
+            q_rotation = quaternion_about_axis(angle_step, rotation_axis)
+            q_final = quaternion_multiply(q_rotation, q_current)
+            
+            rospy.loginfo(f"Current orientation: {q_current}, rotation axis: {rotation_axis}, rot quaternion: {q_rotation}, target orientation: {q_final}")
+                
+        else:
+            rospy.logerr("Invalid DoF selected")
+            
+        rospy.logdebug(f"Target position [array]: {p_final}")
+        rospy.logdebug(f"Target position [array]: x={p_final[0]}, y={p_final[1]}, z={p_final[2]},")
+            
+        # Build the target
+        pose_target.position.x = p_final[0]
+        pose_target.position.y = p_final[1]
+        pose_target.position.z = p_final[2]
+        pose_target.orientation.x = q_final[0]
+        pose_target.orientation.y = q_final[1]
+        pose_target.orientation.z = q_final[2]
+        pose_target.orientation.w = q_final[3]
+        
+        rospy.logdebug(f"Target pose: {pose_target}")
+        
+        # Call the ROS service for inverse kinematics
+        request = GetPositionIKRequest()
+        request.ik_request.group_name = "manipulator"
+        request.ik_request.pose_stamped.header.frame_id = "base_link"
+        request.ik_request.pose_stamped.pose = pose_target
+        #print(request)
+        
+        response = self.ik_service(request)
+        #print(response)
+        
+        # Check if a response was given
+        # http://docs.ros.org/en/hydro/api/ric_mc/html/MoveItErrorCodes_8h_source.html
+        if response.error_code.val != 1:
+            rospy.logwarn("IK calculation failed")
+            if response.error_code.val == response.error_code.NO_IK_SOLUTION:
+                rospy.logwarn(f"NO_IK_SOLUTION")
+            else:
+                rospy.logwarn(f"IK generic error: {response.error_code.val}")
+            
+            return partial( super().dummy_callback )
+                
+        
+        # Compute inverse kinematics
+        target_joints = response.solution.joint_state.position[:6]
+        #self.joint_names = response.solution.joint_state.name
+        #print(self.joint_names, target_joints)
+        
+        
+        
+        
+        
+        
+        ################ SEND ACTION REQUEST ####################        
+        
+        goal = self.generate_action_goal(target_joints, self.joint_names)
+        action_request = partial(self.client.send_goal, goal=goal)        
+        return action_request
+
+
+
+
+
+
+
+
+
+class _CartesianActionFrameworkManager(BaseFrameworkManager):
     
     framework_name = "Cartesian control (Action)"
     
@@ -219,12 +409,7 @@ class CartesianActionFrameworkManager(BaseFrameworkManager):
             rospy.logerr(f"Frame '{frame_name}' not found: {e}")
             return None, None
     
-    
-    
-    
-    
-    
-    
+
     
     
     
@@ -236,4 +421,16 @@ class CartesianActionFrameworkManager(BaseFrameworkManager):
     
     
 if __name__ == "__main__":
-    manager = CartesianActionFrameworkManager()
+    
+    rospy.init_node("cartesian_world_node", log_level=rospy.DEBUG)
+    
+    manager = CartesianActionFrameworkManager(use_ee_frame=True)
+    
+    callback = manager.interpret_gestures(lhg='fist', rhg='two')
+    print(callback)
+    result = callback()
+    print(result)
+    
+    """ callback = manager.interpret_gestures(lhg='four', rhg='one')
+    print(callback)
+    callback() """

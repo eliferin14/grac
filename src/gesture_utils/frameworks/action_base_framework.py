@@ -23,7 +23,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     # To be substituted with a value from the parameter server
     angle_step = np.pi / 64
-    position_step = 0.05
+    position_step = 0.01
     time_step = 0.5
     
     
@@ -58,19 +58,26 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     
     
-    def generate_action_request(self, target_joints_configuration):
+    def generate_action_goal(self, target_joints_configuration, joints_names):
+        
+        if not self.check_joint_limits(target_joints_configuration):
+            rospy.logwarn("Joint limits not respected")
+            return partial(self.dummy_callback)
         
         point = JointTrajectoryPoint()
         point.positions = target_joints_configuration
-        point.time_from_start = self.time_step
+        point.time_from_start = rospy.Duration(self.time_step)
         
         trajectory = JointTrajectory()
+        trajectory.joint_names = joints_names
         trajectory.points = [point]
         
         goal = FollowJointTrajectoryGoal()
-        goal.trajectory = trajectory
+        goal.trajectory = trajectory        
         
-        return partial(self.client.send_goal, goal=goal)
+        #rospy.loginfo(goal)
+        
+        return goal
     
     
     
@@ -96,6 +103,18 @@ class ActionClientBaseFramework(BaseFrameworkManager):
             
         return joint_limits
     
+    
+    
+    
+    def check_joint_limits(self, joint_target):
+        
+        result = True
+        
+        for t, l in zip(joint_target, self.joint_limits):
+            if t < l[0] or t > l[1]:
+                result = False
+        
+        return result
 
     
     

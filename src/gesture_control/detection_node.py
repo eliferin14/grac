@@ -111,7 +111,7 @@ def gesture_detection():
         
         # Execute the selected callback        
         result = callback()
-        rospy.loginfo(f"Selected function {callback.func.__name__}()    ->     {result}")
+        #rospy.loginfo(f"Selected function {callback.func.__name__}()    ->     {result}")
         
         
         

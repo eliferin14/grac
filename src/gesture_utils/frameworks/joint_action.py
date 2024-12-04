@@ -31,8 +31,7 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         # Extract parameters from kwargs
         rhg = kwargs['rhg']
         lhg = kwargs['lhg']
-        
-        
+               
         
         
         
@@ -44,7 +43,7 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         
         # If no joint is selected (left hand is not in any of the fist->palm gestures), do nothing
         if candidate_selected_joint.size == 0:
-            return partial(super().dummy_callback)
+            return partial(super().stop)
         
         # Change selected joint
         if candidate_selected_joint != self.selected_joint_index: rospy.loginfo(f"Joint {candidate_selected_joint[0]} selected")
@@ -54,7 +53,7 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         angle = 0
         if rhg == 'one': angle = self.angle_step         # positive movement
         elif rhg == 'two': angle = -self.angle_step      # negative movement
-        else: return partial(super().stop())
+        else: return partial(super().stop)
         
         
         
@@ -74,11 +73,12 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         # Assert the joint limits are respected 
         if target_joint_position < selected_joint_limits[0] or target_joint_position > selected_joint_limits[1]:
             rospy.logwarn(f"Joint limits exceeded! {target_joint_position} not in [{selected_joint_limits[0]}, {selected_joint_limits[1]}]")
-            return partial(super().dummy_callback)
+            return partial(super().stop)
         
         # Define the target joint positions
         target_joints = current_joints
         target_joints[self.selected_joint_index] = target_joint_position
+        rospy.loginfo(target_joints)
         
         
         
@@ -87,7 +87,8 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         
         ################ SEND ACTION REQUEST ####################
         
-        action_request = super().generate_action_request(target_joints)        
+        goal = self.generate_action_goal(target_joints, self.joint_names)
+        action_request = partial(self.client.send_goal, goal=goal)        
         return action_request
 
 
@@ -228,4 +229,6 @@ if __name__ == "__main__":
     
     jafm = JointActionFrameworkManager()
     callback = jafm.interpret_gestures(lhg='fist', rhg='one')
+    callback = jafm.interpret_gestures(lhg='none', rhg='one')
     print(callback)
+    callback()
