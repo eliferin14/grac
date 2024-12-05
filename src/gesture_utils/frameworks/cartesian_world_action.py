@@ -12,6 +12,7 @@ import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
+from geometry_msgs.msg import Pose
 
 import tf2_ros
 from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix
@@ -47,6 +48,56 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         
         # Initialise the service caller
         self.ik_service = rospy.ServiceProxy('/compute_ik', GetPositionIK)
+        
+        
+        
+        
+        
+    def convert_pose_to_p_q(self, pose):
+        p = [ pose.position.x, pose.position.y, pose.position.z ]
+        q = [ pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w]
+        return p, q
+    
+    def convert_p_q_to_pose(self, p,q):
+        pose = Pose()
+        pose.position.x = p[0]
+        pose.position.y = p[1]
+        pose.position.z = p[2]
+        pose.orientation.x = q[0]
+        pose.orientation.y = q[1]
+        pose.orientation.z = q[2]
+        pose.orientation.w = q[3]
+        
+        return pose
+        
+        
+        
+        
+        
+    def compute_ik(self, pose_target):
+        
+        # Call the ROS service for inverse kinematics
+        request = GetPositionIKRequest()
+        request.ik_request.group_name = "manipulator"
+        request.ik_request.pose_stamped.header.frame_id = "base_link"
+        request.ik_request.pose_stamped.pose = pose_target
+        #print(request)
+        
+        response = self.ik_service(request)
+        
+        # Check if a response was given
+        # http://docs.ros.org/en/hydro/api/ric_mc/html/MoveItErrorCodes_8h_source.html
+        if response.error_code.val != 1:
+            rospy.logwarn("IK calculation failed")
+            if response.error_code.val == response.error_code.NO_IK_SOLUTION:
+                rospy.logwarn(f"NO_IK_SOLUTION")
+            else:
+                rospy.logwarn(f"IK generic error: {response.error_code.val}")
+            return partial( super().dummy_callback )
+                
+        # Extract the joint positions and return
+        return response.solution.joint_state.position[:6]
+            
     
     
     
@@ -100,11 +151,8 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         current_orientation = current_pose.orientation
         rospy.logdebug(f"Current pose: {current_pose}")
         
-        # Get position vector from the current pose
-        p_current = [current_position.x, current_position.y, current_position.z]
-        
-        # Get quaternion of the current pose
-        q_current = [current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w]
+        # Get position vector and quaternion from the current pose
+        p_current, q_current = self.convert_pose_to_p_q(current_pose)
         
         # If the end effector frame is selected, update the rotation matrix
         if self.use_ee_frame:
@@ -149,44 +197,13 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         rospy.logdebug(f"Target position [array]: {p_final}")
         rospy.logdebug(f"Target position [array]: x={p_final[0]}, y={p_final[1]}, z={p_final[2]},")
             
-        # Build the target
-        pose_target.position.x = p_final[0]
-        pose_target.position.y = p_final[1]
-        pose_target.position.z = p_final[2]
-        pose_target.orientation.x = q_final[0]
-        pose_target.orientation.y = q_final[1]
-        pose_target.orientation.z = q_final[2]
-        pose_target.orientation.w = q_final[3]
+        # Build the pose target object
+        pose_target = self.convert_p_q_to_pose(p_final, q_final)
         
         rospy.logdebug(f"Target pose: {pose_target}")
         
-        # Call the ROS service for inverse kinematics
-        request = GetPositionIKRequest()
-        request.ik_request.group_name = "manipulator"
-        request.ik_request.pose_stamped.header.frame_id = "base_link"
-        request.ik_request.pose_stamped.pose = pose_target
-        #print(request)
-        
-        response = self.ik_service(request)
-        #print(response)
-        
-        # Check if a response was given
-        # http://docs.ros.org/en/hydro/api/ric_mc/html/MoveItErrorCodes_8h_source.html
-        if response.error_code.val != 1:
-            rospy.logwarn("IK calculation failed")
-            if response.error_code.val == response.error_code.NO_IK_SOLUTION:
-                rospy.logwarn(f"NO_IK_SOLUTION")
-            else:
-                rospy.logwarn(f"IK generic error: {response.error_code.val}")
-            
-            return partial( super().dummy_callback )
-                
-        
         # Compute inverse kinematics
-        target_joints = response.solution.joint_state.position[:6]
-        #self.joint_names = response.solution.joint_state.name
-        #print(self.joint_names, target_joints)
-        
+        target_joints = self.compute_ik(pose_target)        
         
         
         
