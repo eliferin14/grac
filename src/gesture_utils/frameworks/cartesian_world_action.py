@@ -29,7 +29,7 @@ from tf.transformations import quaternion_multiply, quaternion_about_axis, quate
 
 class CartesianActionFrameworkManager(ActionClientBaseFramework):
     
-    framework_name = "Cartesian world (Action)"
+    framework_name = "World relative"
     
     selected_dof_index = None
     
@@ -45,6 +45,8 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         
         # This flag indicates if the relative motion is done wrt to world frame or end effector frame
         self.use_ee_frame = use_ee_frame
+        if self.use_ee_frame:
+            self.framework_name = "End effector relative"
         
         # Initialise the service caller
         self.ik_service = rospy.ServiceProxy('/compute_ik', GetPositionIK)
@@ -93,7 +95,7 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
                 rospy.logwarn(f"NO_IK_SOLUTION")
             else:
                 rospy.logwarn(f"IK generic error: {response.error_code.val}")
-            return partial( super().dummy_callback )
+            return None
                 
         # Extract the joint positions and return
         return response.solution.joint_state.position[:6]
@@ -203,7 +205,9 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         rospy.logdebug(f"Target pose: {pose_target}")
         
         # Compute inverse kinematics
-        target_joints = self.compute_ik(pose_target)        
+        target_joints = self.compute_ik(pose_target)     
+        if target_joints is None: 
+            return partial(self.stop)   
         
         
         

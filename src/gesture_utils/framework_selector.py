@@ -26,12 +26,10 @@ class FrameworkSelector():
     menu_manager = MenuFrameworkManager()
     
     framework_managers = [
-        BaseFrameworkManager(),
-        BaseFrameworkManager(),
-        CartesianFrameworkManager(),
-        CartesianActionFrameworkManager(),
         JointFrameworkManager(),
-        JointActionFrameworkManager()
+        JointActionFrameworkManager(),
+        CartesianActionFrameworkManager(),
+        CartesianActionFrameworkManager(use_ee_frame=True),
     ]
     
     

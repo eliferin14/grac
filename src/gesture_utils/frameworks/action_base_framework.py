@@ -11,6 +11,7 @@ import moveit_commander
 import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from actionlib_msgs.msg import GoalStatus
 
 
 
@@ -86,9 +87,9 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     def stop(self):
         
         # Cancel the goal trajectory
-        self.client.cancel_goal()
-        #self.client.cancel_all_goals()
-        #self.client.cancel_goals_at_and_before_time()
+        state = self.client.get_state()
+        if state in [GoalStatus.ACTIVE, GoalStatus.PENDING]:
+            self.client.cancel_goal()
     
     
         
