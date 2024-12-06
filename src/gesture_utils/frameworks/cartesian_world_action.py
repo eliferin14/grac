@@ -39,9 +39,9 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
     
     
     
-    def __init__(self, robot_name="ur10e_moveit", group_name="manipulator", use_ee_frame=False):
+    def __init__(self, group_name="manipulator", use_ee_frame=False):
         
-        super().__init__(robot_name, group_name)
+        super().__init__(group_name)
         
         # This flag indicates if the relative motion is done wrt to world frame or end effector frame
         self.use_ee_frame = use_ee_frame
@@ -56,11 +56,15 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         
         
     def convert_pose_to_p_q(self, pose):
+        """Converts a geometry_msg/Pose object to two arrays containing the position vector and the quaternion
+        """   
         p = [ pose.position.x, pose.position.y, pose.position.z ]
         q = [ pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w]
         return p, q
     
     def convert_p_q_to_pose(self, p,q):
+        """Converts a position vector and a quaternion to a Pose object
+        """
         pose = Pose()
         pose.position.x = p[0]
         pose.position.y = p[1]
@@ -77,6 +81,8 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         
         
     def compute_ik(self, pose_target):
+        """Given the pose target, sends a request to the compute_ik service and returns the joint target
+        """
         
         # Call the ROS service for inverse kinematics
         request = GetPositionIKRequest()

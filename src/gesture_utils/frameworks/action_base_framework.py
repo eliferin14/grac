@@ -31,7 +31,13 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     
     
-    def __init__(self, robot_name="ur10e_moveit", group_name="manipulator"):
+    def __init__(self, group_name="manipulator"):
+        """Initiaslise the RobotCommander and the MoveGroupCommander. 
+        Saves the names of the joints and the joint limits in as instance variables
+
+        Args:
+            group_name (str, optional): Name of he movegroup, as specified in the URDF. Defaults to "manipulator".
+        """        ''''''
         
         super().__init__()
         
@@ -60,6 +66,15 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     
     def generate_action_goal(self, target_joints_configuration, joints_names):
+        """Generate the goal object to be sent to the action server
+
+        Args:
+            target_joints_configuration (_type_): Array of joint positions
+            joints_names (_type_): Array of joint names
+
+        Returns:
+            FollowJointTrajectoryGoal: the goal object
+        """        ''''''
         
         if not self.check_joint_limits(target_joints_configuration):
             rospy.logwarn("Joint limits not respected")
@@ -85,6 +100,8 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     
     def stop(self):
+        """Clears the active or pending goal in the action server
+        """        
         
         # Cancel the goal trajectory
         state = self.client.get_state()
@@ -96,6 +113,11 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     
     def get_joint_limits(self):
+        """Get the joint maximum and minimum posiition from the movegroup
+
+        Returns:
+            list: the list containing the limits
+        """        
         
         joint_limits = []
         for joint in self.joint_names:
@@ -108,6 +130,14 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     
     def check_joint_limits(self, joint_target):
+        """Compares the target values to the joint limits
+
+        Args:
+            joint_target (_type_): list of target positions
+
+        Returns:
+            bool: True if each joint is within its bounds
+        """        
         
         result = True
         

@@ -33,7 +33,7 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
     left_gestures_list = ['one']
     
     
-    def __init__(self, robot_name="ur10e_moveit", group_name="manipulator"):
+    def __init__(self, group_name="manipulator"):
         
         super().__init__(robot_name, group_name)
         
