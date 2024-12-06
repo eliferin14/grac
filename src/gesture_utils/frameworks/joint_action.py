@@ -16,7 +16,6 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 
 
-
 class JointActionFrameworkManager(ActionClientBaseFramework):
     
     framework_name = "Joint control (Action)"

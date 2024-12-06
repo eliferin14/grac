@@ -58,8 +58,8 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
     def convert_pose_to_p_q(self, pose):
         """Converts a geometry_msg/Pose object to two arrays containing the position vector and the quaternion
         """   
-        p = [ pose.position.x, pose.position.y, pose.position.z ]
-        q = [ pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w]
+        p = np.array([ pose.position.x, pose.position.y, pose.position.z ])
+        q = np.array([ pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w])
         return p, q
     
     def convert_p_q_to_pose(self, p,q):
