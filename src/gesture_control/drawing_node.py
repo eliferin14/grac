@@ -20,7 +20,7 @@ def draw_callback(msg):
     
     # Show the image
     cv2.namedWindow("Output", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("Output", 800, 600)
+    cv2.resizeWindow("Output", 960, 720)
     cv2.imshow("Output", frame)
     
     # If 'q' is pressed, kill the node

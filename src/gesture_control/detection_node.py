@@ -106,7 +106,8 @@ def gesture_detection():
             rhg=rh_gesture,
             lhg=lh_gesture,
             rhl=detector.right_hand_landmarks_matrix,
-            lhl=detector.left_hand_landmarks_matrix
+            lhl=detector.left_hand_landmarks_matrix,
+            pl=detector.pose_landmarks_matrix
         )
         
         # Execute the selected callback        

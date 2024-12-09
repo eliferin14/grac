@@ -34,7 +34,7 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
     scaling_list_length = len(left_gestures_list)
     
     # TODO: Define this matrix properly
-    camera_to_robot_tf = np.array([[0,0,1], [1,0,0], [0,1,0]])
+    camera_to_robot_tf = np.eye(3)
     
     
     def __init__(self, group_name="manipulator", min_scaling=0.001, max_scaling=1):
@@ -77,8 +77,9 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
             return partial(self.stop)      
         
         # Read the hand position
-        hand_current_position = np.copy(pl[16])              # Right wrist
+        hand_current_position = np.copy(pl[15])              # Right wrist
         hand_current_orientation = None
+        rospy.loginfo(hand_current_position)
         
         # If the robot is not already mimicking, define the starting points and flip the flag
         if not self.is_mimicking:
@@ -167,7 +168,7 @@ if __name__ == "__main__":
     
     hmfm.interpret_gestures(lhg=lhg, rhg=rhg, pl=pl)
     
-    pl[16] = np.random.uniform(-0.5,0.5,3)
+    pl[15] = np.random.uniform(-0.5,0.5,3)
     print(pl)
     
     callback = hmfm.interpret_gestures(lhg=lhg, rhg=rhg, pl=pl)

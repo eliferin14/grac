@@ -7,6 +7,7 @@ from gesture_utils.frameworks.joint_control import JointFrameworkManager
 from gesture_utils.frameworks.joint_action import JointActionFrameworkManager
 from gesture_utils.frameworks.cartesian_control import CartesianFrameworkManager
 from gesture_utils.frameworks.cartesian_world_action import CartesianActionFrameworkManager
+from gesture_utils.frameworks.hand_mimic import HandMimicFrameworkManager
 from gesture_utils.frameworks.menu_framework import MenuFrameworkManager
 from gesture_utils.visual_menu import MenuHandler
 
@@ -30,6 +31,7 @@ class FrameworkSelector():
         JointActionFrameworkManager(),
         CartesianActionFrameworkManager(),
         CartesianActionFrameworkManager(use_ee_frame=True),
+        HandMimicFrameworkManager()
     ]
     
     
