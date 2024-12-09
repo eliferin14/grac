@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 from std_msgs.msg import String
@@ -29,7 +29,7 @@ detector = GestureDetector(
 )
 
 # Open camera
-cam = cv2.VideoCapture(3)
+cam = cv2.VideoCapture(2)
 
 # Initialise FPS counter
 fps_counter = FPS_Counter()

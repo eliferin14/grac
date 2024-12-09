@@ -23,7 +23,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     left_gestures_list = np.array(['fist', 'one', 'two', 'three', 'four', 'palm'])
     
     # To be substituted with a value from the parameter server
-    angle_step = np.pi / 64
+    angle_step = np.pi / 16
     position_step = 0.01
     time_step = 0.5
     
