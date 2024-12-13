@@ -13,9 +13,4 @@
         
     </node>
 
-    <!-- Node 2 -->
-    <node pkg="gesture_control" type="drawing_node.py" name="drawing_node" output="screen">
-        <!-- Add any parameters or arguments here -->
-    </node>
-
 </launch>
