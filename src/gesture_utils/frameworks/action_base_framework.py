@@ -46,7 +46,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         
         super().__init__()
 
-        self.client = actionlib.SimpleActionClient(self.server_name, FollowJointTrajectoryAction)
+        #self.client = actionlib.SimpleActionClient(self.server_name, FollowJointTrajectoryAction)
         
         # Extract joint names and limits
         self.joint_names = self.group_commander.get_active_joints()
@@ -78,7 +78,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         
         if not self.check_joint_limits(target_joints_configuration):
             rospy.logwarn("Joint limits not respected")
-            return partial(self.dummy_callback)
+            return FollowJointTrajectoryGoal()
         
         point = JointTrajectoryPoint()
         point.positions = target_joints_configuration
@@ -106,7 +106,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         # Cancel the goal trajectory
         state = self.client.get_state()
         if state in [GoalStatus.ACTIVE, GoalStatus.PENDING]:
-            self.client.cancel_goal()
+            self.client.cancel_all_goals()
     
     
         

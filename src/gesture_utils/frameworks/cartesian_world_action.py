@@ -127,7 +127,7 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         
         # If no joint is selected (left hand is not in any of the fist->palm gestures), do nothing
         if candidate_selected_dof.size == 0:
-            return partial(super().dummy_callback)
+            return partial(self.stop)
         
         # Change selected joint
         if candidate_selected_dof != self.selected_dof_index: rospy.loginfo(f"DoF {candidate_selected_dof[0]} selected")
@@ -142,7 +142,7 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         elif rhg == 'two': 
             angle_step = -self.angle_step      # negative movement
             position_step = -self.position_step
-        else: return partial(super().dummy_callback)
+        else: return partial(self.stop)
         
         
         

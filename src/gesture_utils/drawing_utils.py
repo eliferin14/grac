@@ -26,6 +26,8 @@ def denormalize_landmarks(matrix, width, height):
     
     return landmarks_pixel
 
+
+
 def draw_landmarks(frame, landmarks, point_color, line_color, blacklist=[] ):
     """Draw the lanmdarks on the image
 
@@ -231,7 +233,7 @@ def draw_menu_arc(
         cv2.circle(frame, (x,y), radius, border_color, thickness=3)
         
     # Draw the name of the selected framework
-    draw_text_with_background(frame, framework_names[candidate_framework], text_color=(0,0,0), bg_color=candidate_color, font_scale=1, center=(palm_origin[0],palm_origin[1]))
+    draw_text_with_background(frame, framework_names[candidate_framework], text_color=(0,0,0), bg_color=candidate_color, font_scale=0.5, center=(palm_origin[0],palm_origin[1]))
         
         
     
@@ -273,10 +275,13 @@ def draw_on_frame(
     draw_hand(frame, lhl_pixel, point_color=(0,0,255), line_color=(255,255,255))
     
     # Add text
-    cv2.putText(frame, f"FPS: {fps:.1f}", (50,50), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,255,0), thickness=2)
-    cv2.putText(frame, f"Left: {lhg}", (50,100), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(0,0,255), thickness=2)
-    cv2.putText(frame, f"Right: {rhg}", (50,150), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness=2)
-    cv2.putText(frame, f"Current framework: {framework_names[selected_framework]}", (50,200), cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,128,0), thickness=2)
+    left_padding = 15
+    line_thickness = 30
+    fontscale = 0.7
+    cv2.putText(frame, f"FPS: {fps:.1f}", (left_padding,line_thickness), cv2.FONT_HERSHEY_SIMPLEX, fontScale=fontscale, color=(0,255,0), thickness=2)
+    cv2.putText(frame, f"Left: {lhg}", (left_padding,line_thickness*2), cv2.FONT_HERSHEY_SIMPLEX, fontScale=fontscale, color=(0,0,255), thickness=2)
+    cv2.putText(frame, f"Right: {rhg}", (left_padding,line_thickness*3), cv2.FONT_HERSHEY_SIMPLEX, fontScale=fontscale, color=(255,0,0), thickness=2)
+    cv2.putText(frame, f"Framework: {framework_names[selected_framework]}", (left_padding,line_thickness*4), cv2.FONT_HERSHEY_SIMPLEX, fontScale=fontscale, color=(255,128,0), thickness=2)
     
     # Draw the menu
     #if lhg == 'L': draw_menu_arc(frame, framework_names, candidate_framework, selected_framework, lhl_pixel, min_theta, max_theta)
