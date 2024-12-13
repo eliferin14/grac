@@ -57,7 +57,8 @@ from gesture_utils.framework_selector import FrameworkSelector
 
 
 
-def gesture_detection():
+
+def main():
     
     # Start the node
     rospy.init_node('gesture_detector', anonymous=True)
@@ -180,7 +181,7 @@ def gesture_detection():
 
 if __name__ == '__main__':
     try:
-        gesture_detection()
+        main()
     except rospy.ROSInterruptException:
         pass
     
