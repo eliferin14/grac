@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import numpy as np
@@ -26,9 +26,14 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     angle_step = np.pi / 64
     position_step = 0.01
     time_step = 0.5
-    
-    
-    
+        
+    # Create robot and movegroup commanders
+    robot_commander = moveit_commander.RobotCommander()
+    group_commander = moveit_commander.MoveGroupCommander("manipulator")   
+
+    # Action client
+    server_name = '/scaled_pos_traj_controller/follow_joint_trajectory' if rospy.get_param('/detection_node/live') else '/arm_controller/follow_joint_trajectory'
+    client = actionlib.SimpleActionClient(server_name, FollowJointTrajectoryAction) 
     
     
     def __init__(self, group_name="manipulator"):
@@ -40,13 +45,8 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         """        ''''''
         
         super().__init__()
-        
-        # Client for the action server
-        self.client = actionlib.SimpleActionClient('/arm_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
-        
-        # Create robot and movegroup commanders
-        self.robot_commander = moveit_commander.RobotCommander()
-        self.group_commander = moveit_commander.MoveGroupCommander("manipulator")
+
+        self.client = actionlib.SimpleActionClient(self.server_name, FollowJointTrajectoryAction)
         
         # Extract joint names and limits
         self.joint_names = self.group_commander.get_active_joints()

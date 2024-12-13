@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 from std_msgs.msg import String
@@ -27,9 +27,6 @@ detector = GestureDetector(
     model_absolute_path,
     0.2
 )
-
-# Open camera
-cam = cv2.VideoCapture(3)
 
 # Initialise FPS counter
 fps_counter = FPS_Counter()
@@ -73,6 +70,11 @@ def main():
     
     # Initialize the bridge
     bridge = CvBridge()
+
+
+    # Open camera
+    cam_id = rospy.get_param('/detection_node/camera_id', 3)
+    cam = cv2.VideoCapture(cam_id)
     
     
     

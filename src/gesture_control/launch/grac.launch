@@ -1,11 +1,21 @@
 <launch>
+
+    <arg name="live" default="false"/>
+    <arg name="camera_id" default="3"/>
+
     <!-- Node 1 -->
     <node pkg="gesture_control" type="detection_node.py" name="detection_node" output="screen">
         <!-- Add any parameters or arguments here -->
+
+        <!-- Pass the 'live' parameter to the node -->
+        <param name="live" value="$(arg live)" />
+        <param name="camera_id" value="$(arg camera_id)"/>
+        
     </node>
 
     <!-- Node 2 -->
     <node pkg="gesture_control" type="drawing_node.py" name="drawing_node" output="screen">
         <!-- Add any parameters or arguments here -->
     </node>
+
 </launch>
