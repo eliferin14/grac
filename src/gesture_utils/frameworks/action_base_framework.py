@@ -23,9 +23,11 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     left_gestures_list = np.array(['fist', 'one', 'two', 'three', 'four', 'palm'])
     
     # To be substituted with a value from the parameter server
-    angle_step = np.pi / 64
-    position_step = 0.01
-    time_step = 0.5
+    joint_velocity = np.pi/12 # [rad/s]
+    ee_velocity = 0.1 # [m/s]
+    time_step = 0.2
+    angle_step = joint_velocity * time_step
+    position_step = ee_velocity * time_step
         
     # Create robot and movegroup commanders
     robot_commander = moveit_commander.RobotCommander()

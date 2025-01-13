@@ -276,7 +276,7 @@ def draw_on_frame(
     
     # Add text
     left_padding = 15
-    line_thickness = 30
+    line_thickness = 25
     fontscale = 0.7
     cv2.putText(frame, f"FPS: {fps:.1f}", (left_padding,line_thickness), cv2.FONT_HERSHEY_SIMPLEX, fontScale=fontscale, color=(0,255,0), thickness=2)
     cv2.putText(frame, f"Left: {lhg}", (left_padding,line_thickness*2), cv2.FONT_HERSHEY_SIMPLEX, fontScale=fontscale, color=(0,0,255), thickness=2)

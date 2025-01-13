@@ -29,7 +29,7 @@ from tf.transformations import quaternion_multiply, quaternion_about_axis, quate
 
 class CartesianActionFrameworkManager(ActionClientBaseFramework):
     
-    framework_name = "World relative"
+    framework_name = "Cartesian control (world)"
     
     selected_dof_index = None
     
@@ -46,7 +46,7 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         # This flag indicates if the relative motion is done wrt to world frame or end effector frame
         self.use_ee_frame = use_ee_frame
         if self.use_ee_frame:
-            self.framework_name = "End effector relative"
+            self.framework_name = "Cartesian control (end effector)"
         
         # Initialise the service caller
         self.ik_service = rospy.ServiceProxy('/compute_ik', GetPositionIK)

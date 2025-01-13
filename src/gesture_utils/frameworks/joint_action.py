@@ -98,7 +98,7 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
 
 class _JointActionFrameworkManager(BaseFrameworkManager):
     
-    framework_name = "Joint control (Action)"
+    framework_name = "Joint control"
     
     # List that defines how joints are selected
     gesture_to_joint_list = np.array(['fist', 'one', 'two', 'three', 'four', 'palm'])
