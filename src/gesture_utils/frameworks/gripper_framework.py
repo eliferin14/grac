@@ -16,6 +16,7 @@ import rospy
 import numpy as np
 from functools import partial
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
+from gesture_utils.scripts.wrgripper import CR200Plug
 
 from std_msgs.msg import Float64MultiArray  # Import the message type
 
@@ -37,7 +38,13 @@ class GripperFrameworkmanager(BaseFrameworkManager):
     
     # Define the topic name
     #topic_name = '/placeholder' if rospy.get_param('/detection_node/live') else '/gripper_controller/command'
-    topic_name = '/gripper_controller/command'
+    live_mode = False
+    try:
+        live_mode = rospy.get_param('/detection_node/live')
+    except KeyError:
+        pass
+
+    sim_topic_name = '/gripper_controller/command'
     
     pick_msg, release_msg = Float64MultiArray(), Float64MultiArray()
     pick_msg.data = [0,0]
@@ -49,17 +56,30 @@ class GripperFrameworkmanager(BaseFrameworkManager):
     def __init__(self):
         
         # Initialise the publisher
-        self.publisher = rospy.Publisher(self.topic_name, Float64MultiArray, queue_size=1)    
+        self.publisher = rospy.Publisher(self.sim_topic_name, Float64MultiArray, queue_size=1)    
+
+        # Create the gripper communication plugin object
+        # See SAMI server source code
+        opt = {'host': '10.1.0.2', 'port': 44221}
+        self.gp = CR200Plug(opt)
         
     
     def _publish_msg(self, msg):
         self.publisher.publish(msg)
     
-    def pick(self):
-        self._publish_msg(self.pick_msg)
+    def grip(self):
+        rospy.loginfo("Gripping")
+        if not self.live_mode:
+            self._publish_msg(self.pick_msg)
+        else:
+            self.gp.grip()
     
     def release(self):
-        self._publish_msg(self.release_msg)
+        rospy.loginfo("Releasing")
+        if not self.live_mode:
+            self._publish_msg(self.release_msg)
+        else:
+            self.gp.release()
     
     
 
@@ -72,13 +92,21 @@ if __name__ == "__main__":
     rospy.init_node("gripper_control_node")
     
     gc = GripperFrameworkmanager()
+    rospy.loginfo(type(gc.gp))
+    gc.live_mode = True
     
     closed = True
     while not rospy.is_shutdown():
+
+        gripper_status = gc.gp.get_status()
+        rospy.loginfo(f"Gripper status: {gripper_status}")
+        
         closed = not closed
         if closed:
             gc.release()
+        else:
+            gc.grip()
         
-        rospy.sleep(3)
+        rospy.sleep(5)
     
     rospy.spin()
