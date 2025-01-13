@@ -65,7 +65,7 @@ def main():
     interpreter = FrameworkSelector()
     
     # Initialize the publishers
-    draw_publisher = rospy.Publisher('draw_topic', draw, queue_size=1)
+    draw_publisher = rospy.Publisher('draw_topic', Image, queue_size=1)
     plot_publisher = rospy.Publisher('plot_topic', plot, queue_size=10)
     
     # Initialize the bridge
@@ -120,34 +120,28 @@ def main():
         
         ############# DRAWING #############
         
-        # Check if the drawing node is listening
-        if draw_publisher.get_num_connections() > 0:
+        # Draw stuff on the frame 
+        draw_on_frame(
+            frame=frame,
+            rhg=rh_gesture,
+            lhg=lh_gesture,
+            rhl=detector.right_hand_landmarks_matrix,
+            lhl=detector.left_hand_landmarks_matrix,
+            pl=detector.pose_landmarks_matrix,
+            fps=fps,
+            framework_names=interpreter.framework_names,
+            candidate_framework=interpreter.candidate_framework_index,
+            selected_framework=interpreter.selected_framework_index,
+            min_theta=interpreter.menu_manager.min_theta,
+            max_theta=interpreter.menu_manager.max_theta
+        )        
         
-            # Draw stuff on the frame 
-            draw_on_frame(
-                frame=frame,
-                rhg=rh_gesture,
-                lhg=lh_gesture,
-                rhl=detector.right_hand_landmarks_matrix,
-                lhl=detector.left_hand_landmarks_matrix,
-                pl=detector.pose_landmarks_matrix,
-                fps=fps,
-                framework_names=interpreter.framework_names,
-                candidate_framework=interpreter.candidate_framework_index,
-                selected_framework=interpreter.selected_framework_index,
-                min_theta=interpreter.menu_manager.min_theta,
-                max_theta=interpreter.menu_manager.max_theta
-            )        
-            
-            # Convert frame to ROS image
-            ros_image = bridge.cv2_to_imgmsg(frame, encoding="bgr8")
-            
-            # Publish on the draw topic
-            draw_msg = draw()
-            draw_msg.header = Header()
-            draw_msg.frame = ros_image
-            draw_publisher.publish(draw_msg)
-            rospy.logdebug("Published image and landmarks to /draw_topic")   
+        # Convert frame to ROS image
+        ros_image = bridge.cv2_to_imgmsg(frame, encoding="bgr8")
+        
+        # Publish on the draw topic
+        draw_publisher.publish(ros_image)
+        rospy.logdebug("Published image and landmarks to /draw_topic")   
         
         
         

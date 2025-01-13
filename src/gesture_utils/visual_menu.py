@@ -88,7 +88,7 @@ class MenuHandler():
     
     
     
-    def draw_menu(self, frame, selected_color=(255,127,0), candidate_color=(0,0,255)):
+    def draw_menu(self, frame, radius=10, selected_color=(255,127,0), candidate_color=(0,0,255)):
         
         height, widht = frame.shape[0], frame.shape[1]
         
@@ -108,11 +108,11 @@ class MenuHandler():
                 fill_color = selected_color
             
             # Draw circles
-            cv2.circle(frame, (cx, cy), 15, fill_color, -1)
-            cv2.circle(frame, (cx, cy), 15, border_color, 3)
+            cv2.circle(frame, (cx, cy), radius, fill_color, -1)
+            cv2.circle(frame, (cx, cy), radius, border_color, int(radius/5.0))
             
             # Draw text
             if i == self.candidate_index:
-                draw_text_with_background(frame, self.names[i], (0,0,0), fill_color, 1, (cx, cy-50))
+                draw_text_with_background(frame, self.names[i], (0,0,0), fill_color, 0.7, (cx, cy-50))
         
         return 
