@@ -71,7 +71,6 @@ def main():
     # Initialize the bridge
     bridge = CvBridge()
 
-
     # Open camera
     cam_id = rospy.get_param('/detection_node/camera_id', 3)
     cam = cv2.VideoCapture(cam_id)
