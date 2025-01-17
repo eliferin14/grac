@@ -40,7 +40,7 @@ fps_counter = FPS_Counter()
 # Create arm object
 # Don't forget to launch the robot simulator!
 from sami.arm import Arm, EzPose
-arm = Arm('ur10e_moveit', group='manipulator')
+#arm = Arm('ur10e_moveit', group='manipulator')
 
 # Create the framework selector
 from gesture_utils.framework_selector import FrameworkSelector
@@ -72,7 +72,7 @@ def main():
     bridge = CvBridge()
 
     # Open camera
-    cam_id = rospy.get_param('/detection_node/camera_id', 3)
+    cam_id = rospy.get_param('/detection_node/camera_id', 2)
     cam = cv2.VideoCapture(cam_id)
     
     
@@ -104,7 +104,7 @@ def main():
         callback = interpreter.interpret_gestures(
             frame=frame,
             fps=fps,
-            arm=arm,
+            #arm=arm,
             rhg=rh_gesture,
             lhg=lh_gesture,
             rhl=detector.right_hand_landmarks_matrix,

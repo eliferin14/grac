@@ -34,7 +34,12 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     group_commander = moveit_commander.MoveGroupCommander("manipulator")   
 
     # Action client
-    server_name = '/scaled_pos_traj_controller/follow_joint_trajectory' if rospy.get_param('/detection_node/live') else '/arm_controller/follow_joint_trajectory'
+    live_mode = False
+    try:
+        live_mode = rospy.get_param('/detection_node/live')
+    except KeyError:
+        pass
+    server_name = '/scaled_pos_traj_controller/follow_joint_trajectory' if live_mode else '/arm_controller/follow_joint_trajectory'
     client = actionlib.SimpleActionClient(server_name, FollowJointTrajectoryAction) 
     
     

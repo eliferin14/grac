@@ -10,6 +10,7 @@ from gesture_utils.frameworks.cartesian_world_action import CartesianActionFrame
 from gesture_utils.frameworks.hand_mimic import HandMimicFrameworkManager
 from gesture_utils.frameworks.menu_framework import MenuFrameworkManager
 from gesture_utils.visual_menu import MenuHandler
+from gesture_utils.frameworks.gripper_framework import GripperFrameworkmanager
 
 from sami.arm import Arm, EzPose
 
@@ -31,6 +32,8 @@ class FrameworkSelector():
         CartesianActionFrameworkManager(),
         CartesianActionFrameworkManager(use_ee_frame=True)
     ]
+
+    gripper_controller = GripperFrameworkmanager()
     
     
     
@@ -50,8 +53,6 @@ class FrameworkSelector():
                        
         # Extract the framework names
         self.framework_names = [ fw.framework_name for fw in self.framework_managers]      
-        
-        #   
                 
         
         
@@ -79,37 +80,12 @@ class FrameworkSelector():
             
             return partial(self.main_menu_handler.draw_menu, frame=kwargs['frame'])
         
+        # If left hand is 'pick' call the gripper control framework
+        elif kwargs['lhg'] == 'pick':
+            self.selected_framework_manager = self.gripper_controller
+        
         else:
             self.main_menu_handler.reset()
-        
-        #return partial(dummy_callback)
-        
-        # If the left hand is doing the L gesture, call the menu selection
-        if kwargs['lhg'] == 'L' and False:
-            
-            if self.selected_framework_manager != self.menu_manager:
-                rospy.loginfo("Open menu")
-            
-            # Add the framework names list to kwargs
-            kwargs['fwn'] = self.framework_names
-            
-            # Call the interpretation function of the menu
-            self.candidate_framework_index, rh_confirmation, callback = self.menu_manager.interpret_gestures(*args, **kwargs)
-            
-            # If the RH confirmed, change the selected framework
-            if rh_confirmation:
-                self.selected_framework_index = self.candidate_framework_index
-                
-                # Select the desired framework
-                self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
-                
-            rospy.loginfo(f"Candidate framework index: {self.candidate_framework_index}, Selected framework index: {self.selected_framework_index}")
-            
-            
-            #rospy.loginfo(f"Selected framework: [{self.selected_framework_index}] -> \'{self.selected_framework_manager.framework_name}\'")
-            
-            # Return the dummy callback
-            return partial(callback)
         
         
         # Call the framework manager and do something
