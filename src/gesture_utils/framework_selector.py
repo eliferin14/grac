@@ -82,7 +82,7 @@ class FrameworkSelector():
         
         # If left hand is 'pick' call the gripper control framework
         elif kwargs['lhg'] == 'pick':
-            self.selected_framework_manager = self.gripper_controller
+            return self.gripper_controller.interpret_gestures(*args, **kwargs)
         
         else:
             self.main_menu_handler.reset()
@@ -90,6 +90,7 @@ class FrameworkSelector():
         
         # Call the framework manager and do something
         callback = self.selected_framework_manager.interpret_gestures(*args, **kwargs)
+        rospy.logwarn(callback.func.__name__)
         
         # Note: no need to use partial
         return callback

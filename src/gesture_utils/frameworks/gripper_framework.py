@@ -80,6 +80,26 @@ class GripperFrameworkmanager(BaseFrameworkManager):
             self._publish_msg(self.release_msg)
         else:
             self.gp.release()
+            
+
+
+
+
+
+    def interpret_gestures(self, *args, **kwargs):
+        
+        # I assume that lhg == 'pick'
+
+        # If rhg is also 'pick', then grip
+        if kwargs['rhg'] == 'pick':
+            return partial(self.grip)
+            
+        # If rhg is 'open', then release
+        elif kwargs['rhg'] == 'palm':
+            return partial(self.release)
+
+        # Otherwise do nothing
+        return partial(self.dummy_callback)
     
     
 
@@ -100,7 +120,7 @@ if __name__ == "__main__":
 
         gripper_status = gc.gp.get_status()
         rospy.loginfo(f"Gripper status: {gripper_status}")
-        
+
         closed = not closed
         if closed:
             gc.release()
