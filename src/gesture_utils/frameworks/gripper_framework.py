@@ -88,7 +88,7 @@ class GripperFrameworkmanager(BaseFrameworkManager):
 
     def interpret_gestures(self, *args, **kwargs):
         
-        # I assume that lhg == 'pick'
+        # I assume that lhg == 'pick', so no need to check that
 
         # If rhg is also 'pick', then grip
         if kwargs['rhg'] == 'pick':

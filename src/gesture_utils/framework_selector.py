@@ -3,16 +3,12 @@ import numpy as np
 from functools import partial
 
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
-from gesture_utils.frameworks.joint_control import JointFrameworkManager
 from gesture_utils.frameworks.joint_action import JointActionFrameworkManager
-from gesture_utils.frameworks.cartesian_control import CartesianFrameworkManager
 from gesture_utils.frameworks.cartesian_world_action import CartesianActionFrameworkManager
 from gesture_utils.frameworks.hand_mimic import HandMimicFrameworkManager
 from gesture_utils.frameworks.menu_framework import MenuFrameworkManager
 from gesture_utils.visual_menu import MenuHandler
 from gesture_utils.frameworks.gripper_framework import GripperFrameworkmanager
-
-from sami.arm import Arm, EzPose
 
 
 
@@ -89,8 +85,9 @@ class FrameworkSelector():
         
         
         # Call the framework manager and do something
+        # NOTE: remember to return func, not func() !!!
         callback = self.selected_framework_manager.interpret_gestures(*args, **kwargs)
-        rospy.logwarn(callback.func.__name__)
+        #rospy.logwarn(callback.func.__name__)
         
         # Note: no need to use partial
         return callback
