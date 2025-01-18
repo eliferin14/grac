@@ -61,7 +61,7 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         ################ TARGET DEFINITION #####################
         
         # Get the joint limits
-        selected_joint_limits = self.joint_limits[self.selected_joint_index]
+        selected_joint_limits = self.joint_position_limits[self.selected_joint_index]
         
         # Get current joint configuration from the robot
         current_joints = self.group_commander.get_current_joint_values()

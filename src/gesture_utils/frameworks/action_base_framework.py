@@ -6,7 +6,8 @@ from functools import partial
 
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 
-import moveit_commander
+#import moveit_commander
+from moveit_commander import MoveGroupCommander, RobotCommander
 
 import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
@@ -30,8 +31,8 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     position_step = ee_velocity * time_step
         
     # Create robot and movegroup commanders
-    robot_commander = moveit_commander.RobotCommander()
-    group_commander = moveit_commander.MoveGroupCommander("manipulator")   
+    robot_commander = RobotCommander()
+    group_commander = MoveGroupCommander("manipulator")   
 
     # Action client
     live_mode = False
@@ -57,10 +58,11 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         
         # Extract joint names and limits
         self.joint_names = self.group_commander.get_active_joints()
-        self.joint_limits = self.get_joint_limits()
+        self.joint_position_limits, self.joint_velocity_limits = self.get_joint_limits()
         
-        rospy.loginfo(self.joint_names)
-        rospy.loginfo(self.joint_limits)
+        rospy.loginfo(f"Joint names: {self.joint_names}")
+        rospy.loginfo(f"Joint position limits: {self.joint_position_limits}")
+        rospy.loginfo(f"Joint velocity limits: {self.joint_velocity_limits}")
         
         
         
@@ -126,12 +128,22 @@ class ActionClientBaseFramework(BaseFrameworkManager):
             list: the list containing the limits
         """        
         
-        joint_limits = []
+        # This part is to be used for getting the linear motion limits
+        current_joint = self.group_commander.get_current_joint_values()
+        jacobian = self.group_commander.get_jacobian_matrix(current_joint)
+        
+        
+        
+        joint_position_limits = []
+        joint_velocity_limits = []
         for joint in self.joint_names:
             #print(robot_commander.get_joint(joint).bounds())
-            joint_limits.append( self.robot_commander.get_joint(joint).bounds() )
+            joint_position_limits.append( self.robot_commander.get_joint(joint).bounds() )
             
-        return joint_limits
+            # Get velocity constraints by calling the service
+            joint_velocity_limits.append(rospy.get_param('/robot_description_planning/joint_limits/{}/max_velocity'.format(joint)))
+            
+        return joint_position_limits, joint_velocity_limits
     
     
     
@@ -148,7 +160,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         
         result = True
         
-        for t, l in zip(joint_target, self.joint_limits):
+        for t, l in zip(joint_target, self.joint_position_limits):
             if t < l[0] or t > l[1]:
                 result = False
         
