@@ -26,9 +26,6 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     # To be substituted with a value from the parameter server
     joint_velocity = np.pi/12 # [rad/s]
     ee_velocity = 0.1 # [m/s]
-    time_step = 0.2
-    angle_step = joint_velocity * time_step
-    position_step = ee_velocity * time_step
         
     # Create robot and movegroup commanders
     robot_commander = RobotCommander()
@@ -44,7 +41,10 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     client = actionlib.SimpleActionClient(server_name, FollowJointTrajectoryAction) 
     
     
-    def __init__(self, group_name="manipulator"):
+    
+    
+    
+    def __init__(self, group_name="manipulator", time_step=0.1, max_velocity_scaling=0.3):
         """Initiaslise the RobotCommander and the MoveGroupCommander. 
         Saves the names of the joints and the joint limits in as instance variables
 
@@ -56,6 +56,12 @@ class ActionClientBaseFramework(BaseFrameworkManager):
 
         #self.client = actionlib.SimpleActionClient(self.server_name, FollowJointTrajectoryAction)
         
+        # Set the timestep
+        self.time_step = time_step
+        
+        # Set the maximum allowable velocity scaling factor
+        self.max_velocity_scaling = max_velocity_scaling
+        
         # Extract joint names and limits
         self.joint_names = self.group_commander.get_active_joints()
         self.joint_position_limits, self.joint_velocity_limits = self.get_joint_limits()
@@ -63,6 +69,9 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         rospy.loginfo(f"Joint names: {self.joint_names}")
         rospy.loginfo(f"Joint position limits: {self.joint_position_limits}")
         rospy.loginfo(f"Joint velocity limits: {self.joint_velocity_limits}")
+        
+        
+        
         
         
         
@@ -165,6 +174,25 @@ class ActionClientBaseFramework(BaseFrameworkManager):
                 result = False
         
         return result
+    
+    
+    
+    
+    
+    
+    def get_scaling_velocity(self, lhl, rhl, mapping='linear'):
+        
+        scaling = 0
+        
+        # 0 < hands distance < 1
+        lh_wrist_coord = lhl[0][0:1]
+        rh_wrist_coord = rhl[0][0:1]
+        hands_distance = np.linalg.norm( rh_wrist_coord-lh_wrist_coord )
+        
+        if mapping == 'linear':
+            scaling = hands_distance
+            
+        return scaling
 
     
     

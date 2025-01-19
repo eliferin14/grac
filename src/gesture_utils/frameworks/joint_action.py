@@ -35,7 +35,7 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         
         
         
-        ################ ACTION SELECTION ########################
+        ################ JOINT SELECTION ########################
         
         # The left hand selects the joint
         candidate_selected_joint = np.where(self.left_gestures_list == lhg)[0]
@@ -48,11 +48,9 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         if candidate_selected_joint != self.selected_joint_index: rospy.loginfo(f"Joint {candidate_selected_joint[0]} selected")
         self.selected_joint_index = candidate_selected_joint[0]
         
-        # The right hand selects the angle
-        angle = 0
-        if rhg == 'one': angle = self.angle_step         # positive movement
-        elif rhg == 'two': angle = -self.angle_step      # negative movement
-        else: return partial(super().stop)
+        # If the right hand is not commanding a move, stop immediately
+        if rhg != 'one' and rhg != 'two': 
+            return partial(self.stop)
         
         
         
@@ -67,7 +65,20 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         current_joints = self.group_commander.get_current_joint_values()
         
         # Calculate the target joint position
-        target_joint_position = current_joints[self.selected_joint_index] + angle
+        # Get hands distance (norm of the vector in the image plane, ignore z)
+        
+        # Calculate velocity scaling factor (function of hands distance)
+        velocity_scaling = self.get_scaling_velocity(kwargs['lhl'], kwargs['rhl'])
+        
+        # Calculate the step to make
+        angle_step = velocity_scaling * self.max_velocity_scaling * self.joint_velocity_limits[self.selected_joint_index] * self.time_step
+        rospy.loginfo(f"Angle step: {angle_step}")
+        
+        # The right hand chooses the direction
+        if rhg == 'one': angle_step *= -1
+        
+        # Define absolute target position
+        target_joint_position = current_joints[self.selected_joint_index] + angle_step
         
         # Assert the joint limits are respected 
         if target_joint_position < selected_joint_limits[0] or target_joint_position > selected_joint_limits[1]:

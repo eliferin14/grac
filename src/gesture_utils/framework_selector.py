@@ -4,7 +4,7 @@ from functools import partial
 
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 from gesture_utils.frameworks.joint_action import JointActionFrameworkManager
-from gesture_utils.frameworks.cartesian_world_action import CartesianActionFrameworkManager
+from gesture_utils.frameworks.cartesian_action import CartesianActionFrameworkManager
 from gesture_utils.frameworks.hand_mimic import HandMimicFrameworkManager
 from gesture_utils.frameworks.menu_framework import MenuFrameworkManager
 from gesture_utils.visual_menu import MenuHandler
@@ -29,7 +29,7 @@ class FrameworkSelector():
         CartesianActionFrameworkManager(use_ee_frame=True)
     ]
 
-    gripper_controller = GripperFrameworkmanager()
+    #gripper_controller = GripperFrameworkmanager()
     
     
     
@@ -78,7 +78,8 @@ class FrameworkSelector():
         
         # If left hand is 'pick' call the gripper control framework
         elif kwargs['lhg'] == 'pick':
-            return self.gripper_controller.interpret_gestures(*args, **kwargs)
+            pass
+            #return self.gripper_controller.interpret_gestures(*args, **kwargs)
         
         else:
             self.main_menu_handler.reset()

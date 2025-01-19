@@ -7,7 +7,7 @@ from functools import partial
 from sami.arm import Arm
 from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 from gesture_utils.frameworks.action_base_framework import ActionClientBaseFramework
-from gesture_utils.frameworks.cartesian_world_action import CartesianActionFrameworkManager
+from gesture_utils.frameworks.cartesian_action import CartesianActionFrameworkManager
 
 import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
