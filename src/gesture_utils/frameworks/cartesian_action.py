@@ -214,10 +214,17 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         elif self.selected_dof_index < 6 and self.selected_dof_index >= 3:
             
             # Select the rotation axis from the relative orientation matrix
-            rotation_axis = self.orientation_matrix[:, self.selected_dof_index - 3 ]    
+            rotation_axis = self.orientation_matrix[:, self.selected_dof_index - 3 ]       
+            
+            # Calculate the maximum velocity along the selected axis
+            cartesian_velocity_limit_along_axis = rotation_axis @ delta_p_max[3:6]       
+            rospy.loginfo(cartesian_velocity_limit_along_axis)
+            
+            # Calculate the rotation vector in the selected frame
+            delta_o = direction * velocity_scaling * cartesian_velocity_limit_along_axis
                 
             # Calculate the rotation quaternion and final quaternion
-            q_rotation = quaternion_about_axis(angle_step, rotation_axis)
+            q_rotation = quaternion_about_axis(delta_o, rotation_axis)
             o_final = quaternion_multiply(q_rotation, o_current)
             
             rospy.loginfo(f"Current orientation: {o_current}, rotation axis: {rotation_axis}, rot quaternion: {q_rotation}, target orientation: {o_final}")
