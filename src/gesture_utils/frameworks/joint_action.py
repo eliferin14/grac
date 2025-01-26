@@ -64,8 +64,8 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         # Get current joint configuration from the robot
         current_joints = self.group_commander.get_current_joint_values()
         
+        
         # Calculate the target joint position
-        # Get hands distance (norm of the vector in the image plane, ignore z)
         
         # Calculate velocity scaling factor (function of hands distance)
         velocity_scaling = self.get_scaling_velocity(kwargs['lhl'], kwargs['rhl'])

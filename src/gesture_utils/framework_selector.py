@@ -39,7 +39,7 @@ class FrameworkSelector():
         
         # The default framework is the base framework
         # NOTE for testing purposes the default is the joint control
-        self.selected_framework_index, self.candidate_framework_index = 0, 0
+        self.selected_framework_index, self.candidate_framework_index = 1, 1
         self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
         
         # Just change the name of empty frameworks

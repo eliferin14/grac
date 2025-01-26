@@ -35,13 +35,16 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
     
     # The rotation matrix is used to extract the rotation axes for rotational movements
     # In the case of movements with world axes, the rotation matrix is the identity matrix
-    rotation_matrix = np.eye(3)
+    orientation_matrix = np.eye(3)
     
     
     
     def __init__(self, group_name="manipulator", use_ee_frame=False):
         
         super().__init__(group_name)
+        
+        # change max scaling
+        self.max_velocity_scaling = 0.1
         
         # This flag indicates if the relative motion is done wrt to world frame or end effector frame
         self.use_ee_frame = use_ee_frame
@@ -133,16 +136,9 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         if candidate_selected_dof != self.selected_dof_index: rospy.loginfo(f"DoF {candidate_selected_dof[0]} selected")
         self.selected_dof_index = candidate_selected_dof[0]
         
-        # The right hand selects the vector/angle
-        angle_step = 0
-        position_step = 0
-        if rhg == 'one': 
-            angle_step = self.angle_step         # positive movement
-            position_step = self.position_step
-        elif rhg == 'two': 
-            angle_step = -self.angle_step      # negative movement
-            position_step = -self.position_step
-        else: return partial(self.stop)
+        # If the right hand is not commanding a move, stop immediately
+        if rhg != 'one' and rhg != 'two': 
+            return partial(self.stop)
         
         
         
@@ -160,17 +156,41 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         rospy.logdebug(f"Current pose: {current_pose}")
         
         # Get position vector and quaternion from the current pose
-        p_current, q_current = self.convert_pose_to_p_q(current_pose)
+        p_current, o_current = self.convert_pose_to_p_q(current_pose)
         
-        # If the end effector frame is selected, update the rotation matrix
+        # If the end effector frame is selected, update the rotation matrix (if not selected, the rotation matrix is the identity)
         if self.use_ee_frame:
-            self.rotation_matrix = quaternion_matrix(q_current)[:3, :3]
+            self.orientation_matrix = quaternion_matrix(o_current)[:3, :3]
         
         # Initialise vectors to calculate the translation
         p_final = p_current
         
         # Initialise quaternions to calculate the rotation
-        q_final = q_current
+        o_final = o_current
+        
+        # Calculate velocity scaling factor (function of hands distance)
+        velocity_scaling = self.get_scaling_velocity(kwargs['lhl'], kwargs['rhl'])
+        
+        # Get the Jacobian of the current configuration
+        current_joint = self.group_commander.get_current_joint_values()
+        jacobian = self.group_commander.get_jacobian_matrix(current_joint)
+        
+        # Calculate the maximum velocity for each DoF in the selected frame
+        # If in base frame, the orientation matrix is the identity
+        cartesian_velocity_limits_base_frame = jacobian @ self.joint_velocity_limits
+        cartesian_velocity_limits = np.hstack([ 
+                                               self.orientation_matrix @ cartesian_velocity_limits_base_frame[:3],  # R*v_max
+                                               self.orientation_matrix @ cartesian_velocity_limits_base_frame[3:6]  # R*omega_max
+                                               ]) 
+        assert cartesian_velocity_limits.shape == (6,)
+        
+        # Calculate the maximum step for each DoF in the selected frame
+        delta_p_max = self.max_velocity_scaling * cartesian_velocity_limits * self.time_step
+        
+        # Isolate the selected DoF and scale the step according to the scaling factor and choose the direction
+        direction = 1 if rhg == 'two' else -1
+        delta_p = np.zeros((6))
+        delta_p[self.selected_dof_index] = direction * velocity_scaling * delta_p_max[self.selected_dof_index]
         
         rospy.logdebug(f"DoF: {self.selected_dof_index}")
         
@@ -178,26 +198,29 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         if self.selected_dof_index < 3 and self.selected_dof_index >= 0:        # Linear movement
             
             # Select the translation axis (x, y or z) from the relative orientation matrix
-            translation_axis = self.rotation_matrix[:, self.selected_dof_index]
+            translation_axis = self.orientation_matrix[:, self.selected_dof_index]     
             
-            # Calculate the translation vector and the final position
-            p_translation = translation_axis * position_step
-            rospy.logdebug(f"Translation axis: {translation_axis}, translation vector: {p_translation}")
+            # Calculate the maximum velocity along the selected axis
+            cartesian_velocity_limit_along_axis = translation_axis @ delta_p_max[:3]       
+            rospy.loginfo(cartesian_velocity_limit_along_axis)
             
-            p_final = p_current + p_translation
+            # Calculate the translation vector in the selected frame
+            delta_p_translation = direction * velocity_scaling * cartesian_velocity_limit_along_axis * translation_axis
             
-            rospy.loginfo(f"Current position: {p_current}, Translation axis: {translation_axis}, vector: {p_translation}, target position: {p_final}")
+            p_final = p_current + delta_p_translation
+            
+            rospy.loginfo(f"Current position: {p_current}, Translation axis: {translation_axis}, Maximum vector: {delta_p_max}, vector: {delta_p_translation}, target position: {p_final}")
             
         elif self.selected_dof_index < 6 and self.selected_dof_index >= 3:
             
             # Select the rotation axis from the relative orientation matrix
-            rotation_axis = self.rotation_matrix[:, self.selected_dof_index - 3 ]    
+            rotation_axis = self.orientation_matrix[:, self.selected_dof_index - 3 ]    
                 
             # Calculate the rotation quaternion and final quaternion
             q_rotation = quaternion_about_axis(angle_step, rotation_axis)
-            q_final = quaternion_multiply(q_rotation, q_current)
+            o_final = quaternion_multiply(q_rotation, o_current)
             
-            rospy.loginfo(f"Current orientation: {q_current}, rotation axis: {rotation_axis}, rot quaternion: {q_rotation}, target orientation: {q_final}")
+            rospy.loginfo(f"Current orientation: {o_current}, rotation axis: {rotation_axis}, rot quaternion: {q_rotation}, target orientation: {o_final}")
                 
         else:
             rospy.logerr("Invalid DoF selected")
@@ -206,7 +229,7 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         rospy.logdebug(f"Target position [array]: x={p_final[0]}, y={p_final[1]}, z={p_final[2]},")
             
         # Build the pose target object
-        pose_target = self.convert_p_q_to_pose(p_final, q_final)
+        pose_target = self.convert_p_q_to_pose(p_final, o_final)
         
         rospy.logdebug(f"Target pose: {pose_target}")
         
