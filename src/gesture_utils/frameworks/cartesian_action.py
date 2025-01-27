@@ -169,7 +169,8 @@ class CartesianActionFrameworkManager(ActionClientBaseFramework):
         o_final = o_current
         
         # Calculate velocity scaling factor (function of hands distance)
-        velocity_scaling = self.get_scaling_velocity(kwargs['lhl'], kwargs['rhl'])
+        velocity_scaling = self.get_velocity_scaling(kwargs['lhl'], kwargs['rhl'])
+        velocity_scaling = self.get_velocity_scaling(kwargs['lhl'], kwargs['rhl'], mapping='exponential', a=0.2, b=0.9, c=0.01, d=1)
         
         # Get the Jacobian of the current configuration
         current_joint = self.group_commander.get_current_joint_values()

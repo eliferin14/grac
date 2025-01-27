@@ -29,7 +29,7 @@ class FrameworkSelector():
         CartesianActionFrameworkManager(use_ee_frame=True)
     ]
 
-    #gripper_controller = GripperFrameworkmanager()
+    gripper_controller = GripperFrameworkmanager()
     
     
     
@@ -79,7 +79,7 @@ class FrameworkSelector():
         # If left hand is 'pick' call the gripper control framework
         elif kwargs['lhg'] == 'pick':
             pass
-            #return self.gripper_controller.interpret_gestures(*args, **kwargs)
+            return self.gripper_controller.interpret_gestures(*args, **kwargs)
         
         else:
             self.main_menu_handler.reset()

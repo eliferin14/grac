@@ -83,7 +83,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     
     
-    def generate_action_goal(self, target_joints_configuration, joints_names):
+    def generate_action_goal(self, target_joints_configuration, joints_names, time=-1):
         """Generate the goal object to be sent to the action server
 
         Args:
@@ -100,7 +100,9 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         
         point = JointTrajectoryPoint()
         point.positions = target_joints_configuration
-        point.time_from_start = rospy.Duration(self.time_step)
+
+        time_step = self.time_step if time==-1 else time
+        point.time_from_start = rospy.Duration(time_step)
         
         trajectory = JointTrajectory()
         trajectory.joint_names = joints_names
@@ -125,7 +127,9 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         state = self.client.get_state()
         if state in [GoalStatus.ACTIVE, GoalStatus.PENDING]:
             self.client.cancel_all_goals()
-    
+            current_joints = self.group_commander.get_current_joint_values()
+            goal = self.generate_action_goal(current_joints, self.joint_names, time=0.05)
+            self.client.send_goal(goal)
     
         
     
@@ -135,13 +139,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
 
         Returns:
             list: the list containing the limits
-        """        
-        
-        # This part is to be used for getting the linear motion limits
-        current_joint = self.group_commander.get_current_joint_values()
-        jacobian = self.group_commander.get_jacobian_matrix(current_joint)
-        
-        
+        """            
         
         joint_position_limits = []
         joint_velocity_limits = []
@@ -180,7 +178,7 @@ class ActionClientBaseFramework(BaseFrameworkManager):
     
     
     
-    def get_scaling_velocity(self, lhl, rhl, mapping='linear'):
+    def get_velocity_scaling(self, lhl, rhl, mapping='linear', **kwargs):
         
         scaling = 0
         
@@ -191,6 +189,22 @@ class ActionClientBaseFramework(BaseFrameworkManager):
         
         if mapping == 'linear':
             scaling = hands_distance
+
+        elif mapping == 'logarithmic':
+            a = kwargs['a']
+            b = kwargs['b']
+            c = kwargs['c']
+            d = kwargs['d']
+
+            scaling = c + (d-c)*(np.log(hands_distance) - np.log(a))/(np.log(b) - np.log(a))
+
+        elif mapping == 'exponential':
+            a = kwargs['a']
+            b = kwargs['b']
+            c = kwargs['c']
+            d = kwargs['d']
+
+            scaling = c + (d-c)*(np.exp(hands_distance) - np.exp(a))/(np.exp(b) - np.exp(a))
             
         return scaling
 

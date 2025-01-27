@@ -68,7 +68,8 @@ class JointActionFrameworkManager(ActionClientBaseFramework):
         # Calculate the target joint position
         
         # Calculate velocity scaling factor (function of hands distance)
-        velocity_scaling = self.get_scaling_velocity(kwargs['lhl'], kwargs['rhl'])
+        velocity_scaling = self.get_velocity_scaling(kwargs['lhl'], kwargs['rhl'])
+        velocity_scaling = self.get_velocity_scaling(kwargs['lhl'], kwargs['rhl'], mapping='exponential', a=0.2, b=0.9, c=0.01, d=1)
         
         # Calculate the step to make
         angle_step = velocity_scaling * self.max_velocity_scaling * self.joint_velocity_limits[self.selected_joint_index] * self.time_step
