@@ -32,7 +32,7 @@ import csv
 
 
 
-cam = cv2.VideoCapture(2)
+cam = cv2.VideoCapture(0)
 
 # Find the model directory absolute path
 model_realtive_path = "src/gesture_utils/training/exported_model"

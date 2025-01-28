@@ -408,7 +408,7 @@ class GestureDetector():
                     _, gesture = self.rightGTR.gesture_change_request(gesture)
                     self.right_hand_gesture = gesture
                     
-                    #self.right_hand_landmarks = hand_landmarks
+                    self.right_hand_landmarks = hand_landmarks
                     self.right_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Right')
                 else:
                     self.left_hand_landmarks_matrix = hand_landmarks_tensor[0]

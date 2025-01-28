@@ -268,7 +268,7 @@ def draw_on_frame(
     pl_pixel = denormalize_landmarks(pl, width, height)
     
     # Draw pose
-    #draw_pose(frame, pl_pixel, point_color=(0,255,0), line_color=(128,128,128))
+    draw_pose(frame, pl_pixel, point_color=(0,255,0), line_color=(128,128,128))
     
     # Draw hands
     draw_hand(frame, rhl_pixel, point_color=(255,0,0), line_color=(255,255,255))

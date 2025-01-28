@@ -95,6 +95,7 @@ def main():
             rhg=rh_gesture,
             lhg=lh_gesture,
             rhl=detector.right_hand_landmarks_matrix,
+            rhwl = detector.right_hand_world_landmarks_matrix,
             lhl=detector.left_hand_landmarks_matrix,
             pl=detector.pose_landmarks_matrix
         )

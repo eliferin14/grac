@@ -26,7 +26,8 @@ class FrameworkSelector():
     framework_managers = [
         JointActionFrameworkManager(),
         CartesianActionFrameworkManager(),
-        CartesianActionFrameworkManager(use_ee_frame=True)
+        CartesianActionFrameworkManager(use_ee_frame=True),
+        HandMimicFrameworkManager()
     ]
 
     gripper_controller = GripperFrameworkmanager()
@@ -39,7 +40,7 @@ class FrameworkSelector():
         
         # The default framework is the base framework
         # NOTE for testing purposes the default is the joint control
-        self.selected_framework_index, self.candidate_framework_index = 1, 1
+        self.selected_framework_index, self.candidate_framework_index = 3,3
         self.selected_framework_manager = self.framework_managers[self.selected_framework_index]
         
         # Just change the name of empty frameworks

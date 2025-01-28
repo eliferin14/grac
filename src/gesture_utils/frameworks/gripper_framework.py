@@ -61,7 +61,7 @@ class GripperFrameworkmanager(BaseFrameworkManager):
         # Create the gripper communication plugin object
         # See SAMI server source code
         opt = {'host': '10.1.0.2', 'port': 44221}
-        self.gp = CR200Plug(opt)
+        if self.live_mode: self.gp = CR200Plug(opt)
         
     
     def _publish_msg(self, msg):
