@@ -95,7 +95,7 @@ class PositionFilter():
 
         assert len(self.filtered_value) == len(new_position)
 
-        return self.filtered_value
+        return np.array(self.filtered_value)
     
     def reset(self):
         for f in self.filters:
@@ -120,10 +120,10 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
     position_filter = PositionFilter(0.1,0.1,0.1,0.001,0.001,0.001)
     
     # TODO: Define this matrix properly
-    camera_to_robot_tf = np.eye(3)
+    camera_to_robot_tf = np.vstack([ [-1,0,0], [0,0,1], [0,1,0] ])
     
     
-    def __init__(self, group_name="manipulator", min_scaling=0.001, max_scaling=1):
+    def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=5):
         
         super().__init__(group_name)
         
@@ -131,13 +131,13 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
         self.ik_service = rospy.ServiceProxy('/compute_ik', GetPositionIK)
         
         # Declare the starting points for hand and robot
-        self.hand_starting_position, self.robot_starting_position = None, None
-        self.hand_starting_orientation, self.robot_starting_orientation = None, None
+        self.hand_previous_position, self.robot_previous_position = None, None
+        self.hand_previous_orientation, self.robot_previous_orientation = None, None
         self.is_mimicking = False
         
         # Calculate the scaling values
-        scaling_list = np.logspace( np.log10(min_scaling), np.log10(max_scaling), self.scaling_list_length)
-        rospy.loginfo(f"Scaling values: {scaling_list}")
+        self.scaling_list = np.logspace( np.log10(min_scaling), np.log10(max_scaling), self.scaling_list_length)
+        rospy.loginfo(f"Scaling values: {self.scaling_list}")
 
         self.publlisher = rospy.Publisher('Hand_tracking', Point, queue_size=10)
         
@@ -161,7 +161,7 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
     
         # If the lhg is not in the list, do nothing
         # Check the right hand: move only when it is in 'fist'
-        if lhg not in self.left_gestures_list    or   not rhg == 'fist' :
+        if lhg not in self.left_gestures_list    or   not rhg == 'pick' :
             # Reset the flag
             self.is_mimicking = False
 
@@ -182,13 +182,9 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
             
             # This code is supposed to be executed only once, when the left hand is choosing the scaling AND the right hand is 'fist'
             
-            # Get current pose of the robot and store it
-            robot_pose = self.group_commander.get_current_pose().pose
-            self.robot_starting_position, self.robot_starting_orientation = self.convert_pose_to_p_q(robot_pose)
-            
             # Save the starting position of the hand
-            self.hand_starting_position = hand_current_position
-            self.hand_starting_orientation = None  
+            self.hand_previous_position = hand_current_position
+            self.hand_previous_orientation = None  
 
             # Store the starting time
             self.start_time = time.time()   
@@ -203,18 +199,19 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
         
         
         
-        ############## TARGET DEFINITION #######################
+        ############## TARGET DEFINITION ######################
             
         # Select the scaling
         # TODO Do it in a fancy way with the left hand gesture
-        scaling_factor = 0.2
+        index = self.left_gestures_list.index(lhg)
+        scaling_factor = self.scaling_list[index]
 
         # Measure the time that has passed from the beginning of the mimicking (needed for filtering)
         current_time = time.time() - self.start_time
 
         # Apply filtering to the hand position
-        #filtered_position = self.position_filter.update(hand_current_position, current_time)
-        filtered_position = hand_current_position
+        filtered_position = self.position_filter.update(hand_current_position, current_time)
+        #filtered_position = hand_current_position
         rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
 
         point = Point()
@@ -222,26 +219,32 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
         point.y = filtered_position[1]
         point.z = filtered_position[2]
         self.publlisher.publish(point)
-
-        return self.dummy_callback
         
         # Calculate the delta vector between the current and starting position of the right hand
-        rospy.logdebug(f"Hand starting position: {self.hand_starting_position}")
-        rospy.logdebug(f"Hand current position: {hand_current_position}")
-        hand_delta_position = hand_current_position - self.hand_starting_position
-        rospy.logdebug(f"Hand delta position: {hand_delta_position}")
+        rospy.logdebug(f"Hand starting position: {self.hand_previous_position}")
+        rospy.logdebug(f"Hand current position: {filtered_position}")
+        hand_delta_position = filtered_position - self.hand_previous_position
+        hand_delta_position = self.suppress_noise(hand_delta_position, 5e-4)
+        rospy.loginfo(f"Hand delta position: {hand_delta_position}")
+
+        self.hand_previous_position = filtered_position
         
+ 
         # Apply scaling to obtain the delta vector for the robot
         robot_delta_position = scaling_factor * hand_delta_position
         rospy.logdebug(f"Robot delta position before rotation: {robot_delta_position}")
         
         # Change of coordinates to have the axes of the camera aligned with the robot base frame
         robot_delta_position = self.camera_to_robot_tf @ robot_delta_position
-        rospy.logdebug(f"Robot delta position: {robot_delta_position}")
+        rospy.loginfo(f"Robot delta position: {robot_delta_position}")
+
+        # Get current pose of the robot and store it
+        robot_pose = self.group_commander.get_current_pose().pose
+        self.robot_previous_position, self.robot_previous_orientation = self.convert_pose_to_p_q(robot_pose)
         
         # Calculate the target pose for the robot (starting pose + scaled delta vector)
-        robot_target_position = self.robot_starting_position + robot_delta_position
-        robot_target_orientation = self.robot_starting_orientation
+        robot_target_position = self.robot_previous_position + robot_delta_position
+        robot_target_orientation = self.robot_previous_orientation
         robot_target_pose = self.convert_p_q_to_pose(robot_target_position, robot_target_orientation)
         rospy.logdebug(robot_target_pose)
         
@@ -255,6 +258,17 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
         # Send the goal to the action server
         action_request = partial(self.client.send_goal, goal=goal)        
         return action_request
+
+
+
+
+    def suppress_noise(self, values, threshold):
+
+        for i, v in enumerate(values):
+            if np.abs(v) < threshold:
+                values[i] = 0
+
+        return values
             
             
 
