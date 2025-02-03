@@ -120,8 +120,8 @@ def main():
             framework_names=interpreter.framework_names,
             candidate_framework=interpreter.candidate_framework_index,
             selected_framework=interpreter.selected_framework_index,
-            min_theta=interpreter.menu_manager.min_theta,
-            max_theta=interpreter.menu_manager.max_theta
+            #min_theta=interpreter.menu_manager.min_theta,
+            #max_theta=interpreter.menu_manager.max_theta
         )        
         
         # Convert frame to ROS image

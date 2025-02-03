@@ -4,18 +4,11 @@ import rospy
 import numpy as np
 from functools import partial
 import time
+from filterpy.kalman import KalmanFilter
 
-from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
-from grac.src.gesture_utils.frameworks.action_based_control_mode import ActionBasedControlMode
-from grac.src.gesture_utils.frameworks.cartesian_control_mode import CartesianControlMode
+from gesture_utils.frameworks.cartesian_control_mode import CartesianControlMode
 
-import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
-from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
-
-import tf2_ros
-from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix
 
 from geometry_msgs.msg import Point
 
@@ -101,6 +94,49 @@ class PositionFilter():
         for f in self.filters:
             f.reset()
 
+
+
+
+
+
+
+class ConstantAccelerationKalmanFilter:
+    def __init__(self, process_noise=0.01, measurement_noise=1.0):
+        self.kf = KalmanFilter(dim_x=9, dim_z=3)
+
+        # Measurement function (H) - Only observes position
+        self.kf.H = np.zeros((3, 9))
+        self.kf.H[:, :3] = np.eye(3)
+
+        # Process noise covariance (Q) - models uncertainty in acceleration
+        self.kf.Q = np.eye(9) * process_noise
+
+        # Measurement noise covariance (R) - models sensor noise
+        self.kf.R = np.eye(3) * measurement_noise
+
+        # Initial state estimate
+        self.kf.x = np.zeros((9, 1))  # Start at rest
+
+        # Initial state covariance (P)
+        self.kf.P = np.eye(9) * 1.0
+
+    def update_transition_matrix(self, dt):
+        """ Updates the state transition matrix F based on the given dt """
+        F = np.eye(9)
+        for i in range(3):
+            F[i, i+3] = dt
+            F[i, i+6] = 0.5 * dt**2
+            F[i+3, i+6] = dt
+        self.kf.F = F
+
+    def update(self, measurement, dt):
+        """ Updates the filter with a new 3D position measurement and given dt """
+        self.update_transition_matrix(dt)  # Update transition model
+        
+        self.kf.predict()
+        self.kf.update(np.array(measurement).reshape(3, 1))
+        return self.kf.x[:3].flatten()  # Return estimated position
+
     
 
 
@@ -117,13 +153,14 @@ class HandMimicControlMode( CartesianControlMode ):
     scaling_list_length = len(left_gestures_list)
 
     # Initialise filters
-    position_filter = PositionFilter(0.1,0.1,0.1,0.001,0.001,0.001)
+    ema_position_filter = PositionFilter(0.3,0.3,0.3,0.001,0.001,0.001)
+    ca_filter = ConstantAccelerationKalmanFilter(process_noise=0.01, measurement_noise=100)
     
     # TODO: Define this matrix properly
     camera_to_robot_tf = np.vstack([ [-1,0,0], [0,0,1], [0,1,0] ])
     
     
-    def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=5):
+    def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=10):
         
         super().__init__(group_name)
         
@@ -167,7 +204,7 @@ class HandMimicControlMode( CartesianControlMode ):
             self.is_mimicking = False
 
             # Reset all the filters
-            self.position_filter.reset()
+            self.ema_position_filter.reset()
 
             return partial(self.stop)      
         
@@ -211,7 +248,8 @@ class HandMimicControlMode( CartesianControlMode ):
         current_time = time.time() - self.start_time
 
         # Apply filtering to the hand position
-        filtered_position = self.position_filter.update(hand_current_position, current_time)
+        #filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
+        filtered_position = self.ca_filter.update(hand_current_position, current_time)
         #filtered_position = hand_current_position
         rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
 
