@@ -5,15 +5,12 @@ from functools import partial
 
 
 
-class BaseFrameworkManager:
+class ControlModeInterface:
     
-    framework_name = "Base"
+    framework_name = "Control Mode Interface"
     
-    def __init__(self):
+    def empty_callback(self):
         pass
-    
-    def dummy_callback(self):
-        return
     
     def interpret_gestures(self, *args, **kwargs):        
         raise NotImplementedError

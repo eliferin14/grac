@@ -5,8 +5,8 @@ import numpy as np
 from functools import partial
 
 from sami.arm import Arm
-from gesture_utils.frameworks.base_framework import BaseFrameworkManager
-from gesture_utils.frameworks.action_base_framework import ActionClientBaseFramework
+from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from grac.src.gesture_utils.frameworks.action_based_control_mode import ActionBasedControlMode
 
 import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
@@ -16,7 +16,7 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 
 
-class JointActionFrameworkManager(ActionClientBaseFramework):
+class JointControlMode(ActionBasedControlMode):
     
     framework_name = "Joint control (Action)"
     
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     
     rospy.init_node("joint_actions_node")
     
-    jafm = JointActionFrameworkManager()
+    jafm = JointControlMode()
     callback = jafm.interpret_gestures(lhg='fist', rhg='one')
     callback = jafm.interpret_gestures(lhg='none', rhg='one')
     print(callback)

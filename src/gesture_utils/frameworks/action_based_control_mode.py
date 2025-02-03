@@ -4,7 +4,7 @@ import rospy
 import numpy as np
 from functools import partial
 
-from gesture_utils.frameworks.base_framework import BaseFrameworkManager
+from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
 
 #import moveit_commander
 from moveit_commander import MoveGroupCommander, RobotCommander
@@ -17,7 +17,7 @@ from actionlib_msgs.msg import GoalStatus
 
 
 
-class ActionClientBaseFramework(BaseFrameworkManager):
+class ActionBasedControlMode(ControlModeInterface):
     
     framework_name = "Abstract action server framework"
     
@@ -216,4 +216,4 @@ class ActionClientBaseFramework(BaseFrameworkManager):
 if __name__ == "__main__":
     
     rospy.init_node("action_client_node")
-    ac = ActionClientBaseFramework()
+    ac = ActionBasedControlMode()

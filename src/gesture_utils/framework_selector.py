@@ -2,13 +2,13 @@ import rospy
 import numpy as np
 from functools import partial
 
-from gesture_utils.frameworks.base_framework import BaseFrameworkManager
-from gesture_utils.frameworks.joint_action import JointActionFrameworkManager
-from gesture_utils.frameworks.cartesian_action import CartesianActionFrameworkManager
-from gesture_utils.frameworks.hand_mimic import HandMimicFrameworkManager
+from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from grac.src.gesture_utils.frameworks.joint_control_mode import JointControlMode
+from grac.src.gesture_utils.frameworks.cartesian_control_mode import CartesianControlMode
+from grac.src.gesture_utils.frameworks.hand_mimic_control_mode import HandMimicControlMode
 from gesture_utils.frameworks.menu_framework import MenuFrameworkManager
 from gesture_utils.visual_menu import MenuHandler
-from gesture_utils.frameworks.gripper_framework import GripperFrameworkmanager
+from grac.src.gesture_utils.frameworks.gripper_control_mode import GripperControlMode
 
 
 
@@ -17,20 +17,20 @@ def dummy_callback():
 
 
 
-class FrameworkSelector():
+class GestureInterpreter():
     
     main_menu_handler = MenuHandler()
     
-    menu_manager = MenuFrameworkManager()
+    #menu_manager = MenuFrameworkManager()
     
     framework_managers = [
-        JointActionFrameworkManager(),
-        CartesianActionFrameworkManager(),
-        CartesianActionFrameworkManager(use_ee_frame=True),
-        HandMimicFrameworkManager()
+        JointControlMode(),
+        CartesianControlMode(),
+        CartesianControlMode(use_ee_frame=True),
+        HandMimicControlMode()
     ]
 
-    gripper_controller = GripperFrameworkmanager()
+    gripper_controller = GripperControlMode()
     
     
     

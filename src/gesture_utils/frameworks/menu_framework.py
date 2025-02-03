@@ -2,7 +2,7 @@ import rospy
 from functools import partial
 import numpy as np
 
-from gesture_utils.frameworks.base_framework import BaseFrameworkManager
+from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
 
 
     
@@ -11,7 +11,7 @@ from gesture_utils.frameworks.base_framework import BaseFrameworkManager
 
 
 
-class MenuFrameworkManager(BaseFrameworkManager):
+class MenuFrameworkManager(ControlModeInterface):
     
     framework_name = "Menu"
     
@@ -63,4 +63,4 @@ class MenuFrameworkManager(BaseFrameworkManager):
             'index':index
         }
         
-        return index, rh_confirmation,  partial(super().dummy_callback)
+        return index, rh_confirmation,  partial(super().empty_callback)

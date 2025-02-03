@@ -2,7 +2,7 @@ import rospy
 import numpy as np
 from functools import partial
 
-from gesture_utils.frameworks.base_framework import BaseFrameworkManager
+from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
 
 from gesture_utils.ros_utils import convert_ROSpoints_to_matrix
 
@@ -28,7 +28,7 @@ useful_rhg = ['none', 'pick']
 
 
 
-class ChainFrameworkManager(BaseFrameworkManager):
+class ChainFrameworkManager(ControlModeInterface):
     
     framework_name = "Motion chain"
     
@@ -53,7 +53,7 @@ class ChainFrameworkManager(BaseFrameworkManager):
         lhl = kwargs['lhl']
         
         if lhg not in useful_lhg:
-            return partial(super().dummy_callback)
+            return partial(super().empty_callback)
         
         # 
     

@@ -5,8 +5,8 @@ import numpy as np
 from functools import partial
 
 from sami.arm import Arm
-from gesture_utils.frameworks.base_framework import BaseFrameworkManager
-from gesture_utils.frameworks.action_base_framework import ActionClientBaseFramework
+from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from grac.src.gesture_utils.frameworks.action_based_control_mode import ActionBasedControlMode
 
 import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
@@ -27,7 +27,7 @@ from tf.transformations import quaternion_multiply, quaternion_about_axis, quate
 
 
 
-class CartesianActionFrameworkManager(ActionClientBaseFramework):
+class CartesianControlMode(ActionBasedControlMode):
     
     framework_name = "Cartesian control (world)"
     
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     
     rospy.init_node("cartesian_world_node", log_level=rospy.DEBUG)
     
-    manager = CartesianActionFrameworkManager(use_ee_frame=True)
+    manager = CartesianControlMode(use_ee_frame=True)
     
     callback = manager.interpret_gestures(lhg='fist', rhg='two')
     print(callback)

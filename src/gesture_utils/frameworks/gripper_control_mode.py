@@ -15,7 +15,7 @@ For the simulation it is in iris_ur10e/ur_e_gazebo/controller/arm_controller.yam
 import rospy
 import numpy as np
 from functools import partial
-from gesture_utils.frameworks.base_framework import BaseFrameworkManager
+from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
 from gesture_utils.scripts.wrgripper import CR200Plug
 
 from std_msgs.msg import Float64MultiArray  # Import the message type
@@ -28,7 +28,7 @@ from std_msgs.msg import Float64MultiArray  # Import the message type
 
 
 
-class GripperFrameworkmanager(BaseFrameworkManager):
+class GripperControlMode(ControlModeInterface):
     
     # I assume that if I am here then lhg == 'pick'
     rhg_list = ['pick', 'open']
@@ -99,7 +99,7 @@ class GripperFrameworkmanager(BaseFrameworkManager):
             return partial(self.release)
 
         # Otherwise do nothing
-        return partial(self.dummy_callback)
+        return partial(self.empty_callback)
     
     
 
@@ -111,7 +111,7 @@ class GripperFrameworkmanager(BaseFrameworkManager):
 if __name__ == "__main__":
     rospy.init_node("gripper_control_node")
     
-    gc = GripperFrameworkmanager()
+    gc = GripperControlMode()
     rospy.loginfo(type(gc.gp))
     gc.live_mode = True
     

@@ -5,9 +5,9 @@ import numpy as np
 from functools import partial
 import time
 
-from gesture_utils.frameworks.base_framework import BaseFrameworkManager
-from gesture_utils.frameworks.action_base_framework import ActionClientBaseFramework
-from gesture_utils.frameworks.cartesian_action import CartesianActionFrameworkManager
+from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from grac.src.gesture_utils.frameworks.action_based_control_mode import ActionBasedControlMode
+from grac.src.gesture_utils.frameworks.cartesian_control_mode import CartesianControlMode
 
 import actionlib
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
@@ -109,7 +109,7 @@ class PositionFilter():
 
 
 
-class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
+class HandMimicControlMode( CartesianControlMode ):
     
     framework_name = "Mimic hand"
     
@@ -139,7 +139,8 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
         self.scaling_list = np.logspace( np.log10(min_scaling), np.log10(max_scaling), self.scaling_list_length)
         rospy.loginfo(f"Scaling values: {self.scaling_list}")
 
-        self.publlisher = rospy.Publisher('Hand_tracking', Point, queue_size=10)
+        self.publisher_raw = rospy.Publisher('hand_position_raw', Point, queue_size=10)
+        self.publisher_filtered = rospy.Publisher('hand_position_filtered', Point, queue_size=10)
         
         
         
@@ -214,11 +215,19 @@ class HandMimicFrameworkManager( CartesianActionFrameworkManager ):
         #filtered_position = hand_current_position
         rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
 
+        # Publish the raw position
+        point = Point()
+        point.x = hand_current_position[0]
+        point.y = hand_current_position[1]
+        point.z = hand_current_position[2]
+        self.publisher_raw.publish(point)
+
+        # Publish the filtered position
         point = Point()
         point.x = filtered_position[0]
         point.y = filtered_position[1]
         point.z = filtered_position[2]
-        self.publlisher.publish(point)
+        self.publisher_filtered.publish(point)
         
         # Calculate the delta vector between the current and starting position of the right hand
         rospy.logdebug(f"Hand starting position: {self.hand_previous_position}")
@@ -287,7 +296,7 @@ if __name__ == "__main__":
     
     rospy.init_node("Hand_mimic", log_level=rospy.DEBUG)
     
-    hmfm = HandMimicFrameworkManager()
+    hmfm = HandMimicControlMode()
     
     lhg = 'one'
     rhg = 'fist'

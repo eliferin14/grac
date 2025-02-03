@@ -315,7 +315,7 @@ class GestureDetector():
         
         
         
-    def process(self, frame, use_threading=False):
+    def process(self, frame, use_threading=True):
         """Detects hands and pose in a frame. Also recognize hand gestures
 
         Args:

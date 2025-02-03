@@ -15,7 +15,7 @@ from message_filters import Subscriber, ApproximateTimeSynchronizer
 
 from gesture_control.msg import draw, plot
 from gesture_utils.gesture_detector import GestureDetector
-from gesture_utils.framework_selector import FrameworkSelector
+from gesture_utils.framework_selector import GestureInterpreter
 from gesture_utils.ros_utils import convert_matrix_to_ROSpoints
 from gesture_utils.fps_counter import FPS_Counter
 from gesture_utils.drawing_utils import draw_on_frame
@@ -55,7 +55,7 @@ class SubscriberNode():
         )
         
         # Create the framework selector
-        self.interpreter = FrameworkSelector()
+        self.interpreter = GestureInterpreter()
         
         # Initialise FPS counter
         self.fps_counter = FPS_Counter()
