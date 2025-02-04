@@ -140,7 +140,7 @@ def main():
         if plot_publisher.get_num_connections() > 0:
         
             # Convert world coordinates to a list of ROS points
-            rhwl = convert_matrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
+            rhwl = convert_matrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
             lhwl = convert_matrix_to_ROSpoints(detector.left_hand_world_landmarks_matrix)
             pwl = convert_matrix_to_ROSpoints(detector.pose_world_landmarks_matrix)
             

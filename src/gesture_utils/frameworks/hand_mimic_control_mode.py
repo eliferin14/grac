@@ -5,6 +5,8 @@ import numpy as np
 from functools import partial
 import time
 from filterpy.kalman import KalmanFilter
+from scipy.signal import savgol_filter
+import cv2
 
 from gesture_utils.frameworks.cartesian_control_mode import CartesianControlMode
 
@@ -137,6 +139,52 @@ class ConstantAccelerationKalmanFilter:
         self.kf.update(np.array(measurement).reshape(3, 1))
         return self.kf.x[:3].flatten()  # Return estimated position
 
+
+
+
+
+class SavitzkyGolayTrajectorySmoother:
+    def __init__(self, window_size=5, poly_order=2):
+        """
+        Initializes the trajectory generator.
+        :param window_size: Number of past points used for filtering (must be odd).
+        :param poly_order: Order of polynomial for Savitzky-Golay filter.
+        """
+        self.window_size = window_size
+        self.poly_order = poly_order
+        self.history = []  # Stores past measurements
+
+    def update(self, measurement):
+        """
+        Updates the trajectory with a new noisy measurement and predicts the next position.
+        :param measurement: (x, y, z) tuple
+        :return: Estimated next position (x, y, z)
+        """
+        self.history.append(measurement)
+
+        # Ensure we have enough points
+        if len(self.history) < self.window_size:
+            return measurement  # Not enough data to filter, return raw measurement
+
+        # Keep only the last N points
+        self.history = self.history[-self.window_size:]
+
+        # Convert to NumPy array for processing
+        data = np.array(self.history)
+
+        # Apply Savitzky-Golay filter separately for x, y, z
+        smoothed_x = savgol_filter(data[:, 0], self.window_size, self.poly_order, mode='nearest')
+        smoothed_y = savgol_filter(data[:, 1], self.window_size, self.poly_order, mode='nearest')
+        smoothed_z = savgol_filter(data[:, 2], self.window_size, self.poly_order, mode='nearest')
+
+        # Compute estimated next position by extrapolating the last trend
+        next_x = 2 * smoothed_x[-1] - smoothed_x[-2]
+        next_y = 2 * smoothed_y[-1] - smoothed_y[-2]
+        next_z = 2 * smoothed_z[-1] - smoothed_z[-2]
+
+        return [next_x, next_y, next_z]
+
+
     
 
 
@@ -155,9 +203,16 @@ class HandMimicControlMode( CartesianControlMode ):
     # Initialise filters
     ema_position_filter = PositionFilter(0.3,0.3,0.3,0.001,0.001,0.001)
     ca_filter = ConstantAccelerationKalmanFilter(process_noise=0.01, measurement_noise=100)
+    sg_smoother = SavitzkyGolayTrajectorySmoother(window_size=9, poly_order=2)
+
+    # Define a scaling factor for the depth coordinate
+    depth_scaling = 1
     
     # TODO: Define this matrix properly
     camera_to_robot_tf = np.vstack([ [-1,0,0], [0,0,1], [0,1,0] ])
+    #camera_to_robot_tf = np.eye(3)
+
+    camera_matrix = np.eye(3, dtype=np.float32)
     
     
     def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=10):
@@ -189,6 +244,7 @@ class HandMimicControlMode( CartesianControlMode ):
         rhg = kwargs['rhg']
         lhg = kwargs['lhg']
         pl = kwargs['pl']
+        rhl = kwargs['rhl']
         rhwl = kwargs['rhwl']
         
         
@@ -210,7 +266,8 @@ class HandMimicControlMode( CartesianControlMode ):
         
         # Read the hand position
         #hand_current_position = pl[15]               # Right wrist
-        hand_current_position = rhwl[0]              # Right wrist
+        li = 5
+        hand_current_position = [rhl[li][0], rhl[li][1], rhwl[li][2]]           # Right wrist
         hand_current_orientation = None
         
         # If the robot is not already mimicking, define the starting points and flip the flag
@@ -238,6 +295,12 @@ class HandMimicControlMode( CartesianControlMode ):
         
         
         ############## TARGET DEFINITION ######################
+
+        # Get hand depth from world coordinates and pixel coordinates
+        coplanar_points_indexes = np.arange(21)
+        points3D = rhwl[coplanar_points_indexes]
+        points2D = rhl[:,:2][coplanar_points_indexes]
+        hand_current_position = self.get_hand_depth(points3D, points2D)
             
         # Select the scaling
         # TODO Do it in a fancy way with the left hand gesture
@@ -248,10 +311,10 @@ class HandMimicControlMode( CartesianControlMode ):
         current_time = time.time() - self.start_time
 
         # Apply filtering to the hand position
-        #filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
-        filtered_position = self.ca_filter.update(hand_current_position, current_time)
+        filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
+        #filtered_position = self.ca_filter.update(hand_current_position, current_time)
         #filtered_position = hand_current_position
-        rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
+        #rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
 
         # Publish the raw position
         point = Point()
@@ -272,10 +335,13 @@ class HandMimicControlMode( CartesianControlMode ):
         rospy.logdebug(f"Hand current position: {filtered_position}")
         hand_delta_position = filtered_position - self.hand_previous_position
         hand_delta_position = self.suppress_noise(hand_delta_position, 5e-4)
-        rospy.loginfo(f"Hand delta position: {hand_delta_position}")
+        #rospy.loginfo(f"Hand delta position: {hand_delta_position}")
 
         self.hand_previous_position = filtered_position
         
+
+        # Compensate depth scaling
+        hand_delta_position[2] *= self.depth_scaling
  
         # Apply scaling to obtain the delta vector for the robot
         robot_delta_position = scaling_factor * hand_delta_position
@@ -283,7 +349,7 @@ class HandMimicControlMode( CartesianControlMode ):
         
         # Change of coordinates to have the axes of the camera aligned with the robot base frame
         robot_delta_position = self.camera_to_robot_tf @ robot_delta_position
-        rospy.loginfo(f"Robot delta position: {robot_delta_position}")
+        #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
 
         # Get current pose of the robot and store it
         robot_pose = self.group_commander.get_current_pose().pose
@@ -291,6 +357,7 @@ class HandMimicControlMode( CartesianControlMode ):
         
         # Calculate the target pose for the robot (starting pose + scaled delta vector)
         robot_target_position = self.robot_previous_position + robot_delta_position
+        #robot_target_position = self.sg_smoother.update(robot_target_position)
         robot_target_orientation = self.robot_previous_orientation
         robot_target_pose = self.convert_p_q_to_pose(robot_target_position, robot_target_orientation)
         rospy.logdebug(robot_target_pose)
@@ -316,6 +383,28 @@ class HandMimicControlMode( CartesianControlMode ):
                 values[i] = 0
 
         return values
+    
+
+
+
+    def get_hand_depth(self, points3D, points2D):
+
+        assert points2D.shape[1] == 2
+        assert points3D.shape[0] == points2D.shape[0]
+
+        """ normAB = np.linalg.norm(points3D[0] - points3D[1])
+        normBC = np.linalg.norm(points3D[2] - points3D[1])
+        normAC = np.linalg.norm(points3D[0] - points3D[2])
+
+        rospy.loginfo(f"AB: {normAB:.4f}, BC: {normBC:.4f}, AC: {normAC:.4f}") """
+
+        # Get rotation and translation vectors from points
+        ret, rvec, tvec, _ = cv2.solvePnPRansac(points3D, points2D, self.camera_matrix, np.zeros((5,1)))
+        #rospy.loginfo(f"Translation vector: {tvec}")
+        if not ret:
+            raise ValueError
+
+        return tvec.reshape((-1))
             
             
 
