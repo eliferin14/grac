@@ -201,7 +201,7 @@ class SavitzkyGolayTrajectorySmoother:
 
 class HandMimicControlMode( CartesianControlMode ):
     
-    framework_name = "Mimic hand"
+    framework_name = "Hand Mimic"
     
     left_gestures_list = ['one', 'two', 'three', 'four']
     scaling_list_length = len(left_gestures_list)
@@ -282,12 +282,13 @@ class HandMimicControlMode( CartesianControlMode ):
         coplanar_points_indexes = np.arange(21)
         points3D = rhwl[coplanar_points_indexes]
         points2D = rhl[:,:2][coplanar_points_indexes]
-        hand_current_position = self.solvePnP(points3D, points2D)
+        hand_current_position_camera_frame = self.solvePnP_hand(points3D, points2D)
+        hand_current_position = self.camera_to_robot_tf @ hand_current_position_camera_frame
         
         # Apply filtering to the hand position
-        filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
+        #filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
         #filtered_position = self.ca_filter.update(hand_current_position, current_time)
-        #filtered_position = hand_current_position
+        filtered_position = hand_current_position
         #rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
 
         # Publish the raw position
@@ -344,8 +345,10 @@ class HandMimicControlMode( CartesianControlMode ):
         
         # Calculate the delta vector between the current and starting position of the right hand
         rospy.logdebug(f"Hand starting position: {self.hand_previous_position}")
-        rospy.logdebug(f"Hand current position: {filtered_position}")
-        hand_delta_position = filtered_position - self.hand_previous_position
+        #rospy.logdebug(f"Hand current position: {filtered_position}")
+        #hand_delta_position = filtered_position - self.hand_previous_position
+        hand_delta_position = hand_current_position - self.hand_previous_position
+        hand_delta_position = self.ema_position_filter.update(hand_delta_position, current_time)
         hand_delta_position = self.suppress_noise(hand_delta_position, 5e-4)
         #rospy.loginfo(f"Hand delta position: {hand_delta_position}")
 
@@ -357,7 +360,7 @@ class HandMimicControlMode( CartesianControlMode ):
         rospy.logdebug(f"Robot delta position before rotation: {robot_delta_position}")
         
         # Change of coordinates to have the axes of the camera aligned with the robot base frame
-        robot_delta_position = self.camera_to_robot_tf @ robot_delta_position
+        #robot_delta_position =  robot_delta_position
         #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
         
         # Calculate the target pose for the robot (starting pose + scaled delta vector)
@@ -399,7 +402,7 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
 
-    def solvePnP(self, points3D, points2D):
+    def solvePnP_hand(self, points3D, points2D):
 
         assert points2D.shape[1] == 2
         assert points3D.shape[0] == points2D.shape[0]
@@ -420,7 +423,7 @@ class HandMimicControlMode( CartesianControlMode ):
         R, _ = cv2.Rodrigues(rvec)
         wrist_pos = R @ points3D[0].reshape((-1)) + tvec.reshape((-1))
 
-        rospy.loginfo(f"Estimated wrist positon in camera frame: {wrist_pos}")
+        #rospy.loginfo(f"Estimated wrist positon in camera frame: {wrist_pos}")
 
         return wrist_pos.reshape((-1))
             
