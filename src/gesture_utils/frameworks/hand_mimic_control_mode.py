@@ -162,20 +162,23 @@ class SavitzkyGolayTrajectorySmoother:
         """
         self.history.append(measurement)
 
-        # Ensure we have enough points
-        if len(self.history) < self.window_size:
-            return measurement  # Not enough data to filter, return raw measurement
+        # If there are no measurements stored, return the raw measurement
+        if len(self.history) <= self.poly_order:
+            return measurement
+        
+        # If there are less that the desired number of points, smooth anyways but with less points
+        ws = np.min([ len(self.history), self.window_size ])
 
         # Keep only the last N points
-        self.history = self.history[-self.window_size:]
+        self.history = self.history[-ws:]
 
         # Convert to NumPy array for processing
         data = np.array(self.history)
 
         # Apply Savitzky-Golay filter separately for x, y, z
-        smoothed_x = savgol_filter(data[:, 0], self.window_size, self.poly_order, mode='nearest')
-        smoothed_y = savgol_filter(data[:, 1], self.window_size, self.poly_order, mode='nearest')
-        smoothed_z = savgol_filter(data[:, 2], self.window_size, self.poly_order, mode='nearest')
+        smoothed_x = savgol_filter(data[:, 0], ws, self.poly_order, mode='nearest')
+        smoothed_y = savgol_filter(data[:, 1], ws, self.poly_order, mode='nearest')
+        smoothed_z = savgol_filter(data[:, 2], ws, self.poly_order, mode='nearest')
 
         # Compute estimated next position by extrapolating the last trend
         next_x = 2 * smoothed_x[-1] - smoothed_x[-2]
@@ -183,6 +186,9 @@ class SavitzkyGolayTrajectorySmoother:
         next_z = 2 * smoothed_z[-1] - smoothed_z[-2]
 
         return [next_x, next_y, next_z]
+
+    def reset(self):
+        self.history = []
 
 
     
@@ -209,13 +215,13 @@ class HandMimicControlMode( CartesianControlMode ):
     depth_scaling = 1
     
     # TODO: Define this matrix properly
-    camera_to_robot_tf = np.vstack([ [-1,0,0], [0,0,1], [0,1,0] ])
+    camera_to_robot_tf = np.vstack([ [-1,0,0], [0,0,1], [0,-1,0] ])
     #camera_to_robot_tf = np.eye(3)
 
     camera_matrix = np.eye(3, dtype=np.float32)
     
     
-    def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=10):
+    def __init__(self, group_name="manipulator", min_scaling=0.1, max_scaling=5):
         
         super().__init__(group_name)
         
@@ -254,62 +260,30 @@ class HandMimicControlMode( CartesianControlMode ):
         ############## ACTION SELECTION #######################
     
         # If the lhg is not in the list, do nothing
-        # Check the right hand: move only when it is in 'fist'
+        # Check the right hand: move only when it is in 'pick'
         if lhg not in self.left_gestures_list    or   not rhg == 'pick' :
             # Reset the flag
             self.is_mimicking = False
 
             # Reset all the filters
             self.ema_position_filter.reset()
+            self.sg_smoother.reset()
+
+            # Store the starting time
+            self.start_time = time.time() 
 
             return partial(self.stop)      
         
-        # Read the hand position
-        #hand_current_position = pl[15]               # Right wrist
-        li = 5
-        hand_current_position = [rhl[li][0], rhl[li][1], rhwl[li][2]]           # Right wrist
-        hand_current_orientation = None
-        
-        # If the robot is not already mimicking, define the starting points and flip the flag
-        if not self.is_mimicking:
-            
-            rospy.logdebug("Saving starting postion of robot and hand")
-            
-            # This code is supposed to be executed only once, when the left hand is choosing the scaling AND the right hand is 'fist'
-            
-            # Save the starting position of the hand
-            self.hand_previous_position = hand_current_position
-            self.hand_previous_orientation = None  
 
-            # Store the starting time
-            self.start_time = time.time()   
-            
-            # Flip the flag
-            self.is_mimicking = True
-            
-            # Do nothing
-            return partial(self.stop)
-            
-        
-        
-        
-        
-        ############## TARGET DEFINITION ######################
+        # Measure the time that has passed from the beginning of the mimicking (needed for filtering)
+        current_time = time.time() - self.start_time   
 
         # Get hand depth from world coordinates and pixel coordinates
         coplanar_points_indexes = np.arange(21)
         points3D = rhwl[coplanar_points_indexes]
         points2D = rhl[:,:2][coplanar_points_indexes]
-        hand_current_position = self.get_hand_depth(points3D, points2D)
-            
-        # Select the scaling
-        # TODO Do it in a fancy way with the left hand gesture
-        index = self.left_gestures_list.index(lhg)
-        scaling_factor = self.scaling_list[index]
-
-        # Measure the time that has passed from the beginning of the mimicking (needed for filtering)
-        current_time = time.time() - self.start_time
-
+        hand_current_position = self.solvePnP(points3D, points2D)
+        
         # Apply filtering to the hand position
         filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
         #filtered_position = self.ca_filter.update(hand_current_position, current_time)
@@ -329,6 +303,44 @@ class HandMimicControlMode( CartesianControlMode ):
         point.y = filtered_position[1]
         point.z = filtered_position[2]
         self.publisher_filtered.publish(point)
+
+        # Get current pose of the robot and store it
+        robot_pose = self.group_commander.get_current_pose().pose
+        robot_position, robot_orientation = self.convert_pose_to_p_q(robot_pose)
+
+        
+        # If the robot is not already mimicking, define the starting points and flip the flag
+        if not self.is_mimicking:
+            
+            rospy.logdebug("Saving starting postion of robot and hand")
+            
+            # This code is supposed to be executed only once, when the left hand is choosing the scaling AND the right hand is 'fist'
+            
+            # Save the starting position of the hand
+            self.hand_previous_position = hand_current_position
+            self.hand_previous_orientation = None  
+
+            self.robot_previous_position = self.sg_smoother.update(robot_position)
+            self.robot_previous_orientation = robot_orientation
+
+            # Store the starting time
+            self.start_time = time.time()   
+            
+            # Flip the flag
+            self.is_mimicking = True
+            
+            # Stay still
+            return partial(self.stop)
+            
+        
+        
+        
+        
+        ############## TARGET DEFINITION ######################
+            
+        # Select the scaling
+        index = self.left_gestures_list.index(lhg)
+        scaling_factor = self.scaling_list[index]     
         
         # Calculate the delta vector between the current and starting position of the right hand
         rospy.logdebug(f"Hand starting position: {self.hand_previous_position}")
@@ -336,9 +348,6 @@ class HandMimicControlMode( CartesianControlMode ):
         hand_delta_position = filtered_position - self.hand_previous_position
         hand_delta_position = self.suppress_noise(hand_delta_position, 5e-4)
         #rospy.loginfo(f"Hand delta position: {hand_delta_position}")
-
-        self.hand_previous_position = filtered_position
-        
 
         # Compensate depth scaling
         hand_delta_position[2] *= self.depth_scaling
@@ -350,17 +359,20 @@ class HandMimicControlMode( CartesianControlMode ):
         # Change of coordinates to have the axes of the camera aligned with the robot base frame
         robot_delta_position = self.camera_to_robot_tf @ robot_delta_position
         #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
-
-        # Get current pose of the robot and store it
-        robot_pose = self.group_commander.get_current_pose().pose
-        self.robot_previous_position, self.robot_previous_orientation = self.convert_pose_to_p_q(robot_pose)
         
         # Calculate the target pose for the robot (starting pose + scaled delta vector)
         robot_target_position = self.robot_previous_position + robot_delta_position
-        #robot_target_position = self.sg_smoother.update(robot_target_position)
+        robot_target_position = self.sg_smoother.update(robot_target_position)
         robot_target_orientation = self.robot_previous_orientation
         robot_target_pose = self.convert_p_q_to_pose(robot_target_position, robot_target_orientation)
         rospy.logdebug(robot_target_pose)
+
+        # Substitute the previous position with the current one for the next iteration
+        self.hand_previous_position = filtered_position      
+        self.robot_previous_position = robot_target_position #NOTE This could be changed to the current robot position instead of the previous target
+
+
+
         
         # Call the inverse kinematics service
         target_joints = self.compute_ik(robot_target_pose)
@@ -387,7 +399,7 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
 
-    def get_hand_depth(self, points3D, points2D):
+    def solvePnP(self, points3D, points2D):
 
         assert points2D.shape[1] == 2
         assert points3D.shape[0] == points2D.shape[0]
@@ -404,7 +416,13 @@ class HandMimicControlMode( CartesianControlMode ):
         if not ret:
             raise ValueError
 
-        return tvec.reshape((-1))
+        # Get the position of the wrist base in camera frame
+        R, _ = cv2.Rodrigues(rvec)
+        wrist_pos = R @ points3D[0].reshape((-1)) + tvec.reshape((-1))
+
+        rospy.loginfo(f"Estimated wrist positon in camera frame: {wrist_pos}")
+
+        return wrist_pos.reshape((-1))
             
             
 
