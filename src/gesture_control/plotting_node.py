@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import mediapipe as mp
-
-from gesture_control.msg import plot
 from gesture_utils.ros_utils import convert_ROSpoints_to_XYZarrays
 
 

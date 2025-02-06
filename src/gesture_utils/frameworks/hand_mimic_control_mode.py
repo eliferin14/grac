@@ -14,6 +14,8 @@ from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
 from geometry_msgs.msg import Point
 
+from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix, quaternion_from_matrix
+
 
 
 
@@ -221,7 +223,7 @@ class HandMimicControlMode( CartesianControlMode ):
     camera_matrix = np.eye(3, dtype=np.float32)
     
     
-    def __init__(self, group_name="manipulator", min_scaling=0.1, max_scaling=5):
+    def __init__(self, group_name="manipulator", min_scaling=0.1, max_scaling=3):
         
         super().__init__(group_name)
         
@@ -282,7 +284,7 @@ class HandMimicControlMode( CartesianControlMode ):
         coplanar_points_indexes = np.arange(21)
         points3D = rhwl[coplanar_points_indexes]
         points2D = rhl[:,:2][coplanar_points_indexes]
-        hand_current_position_camera_frame = self.solvePnP_hand(points3D, points2D)
+        hand_current_position_camera_frame, hand_current_orientation_camera_frame = self.solvePnP_hand(points3D, points2D)
         hand_current_position = self.camera_to_robot_tf @ hand_current_position_camera_frame
         
         # Apply filtering to the hand position
@@ -422,10 +424,11 @@ class HandMimicControlMode( CartesianControlMode ):
         # Get the position of the wrist base in camera frame
         R, _ = cv2.Rodrigues(rvec)
         wrist_pos = R @ points3D[0].reshape((-1)) + tvec.reshape((-1))
+        wrist_oriientation = quaternion_from_matrix(R)
 
         #rospy.loginfo(f"Estimated wrist positon in camera frame: {wrist_pos}")
 
-        return wrist_pos.reshape((-1))
+        return wrist_pos.reshape((-1)), wrist_oriientation
             
             
 

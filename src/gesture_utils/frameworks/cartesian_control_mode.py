@@ -10,7 +10,7 @@ from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from geometry_msgs.msg import Pose
 
 import tf2_ros
-from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix
+from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix, quaternion_from_matrix
 
 
 
