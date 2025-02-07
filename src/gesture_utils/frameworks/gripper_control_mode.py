@@ -15,7 +15,7 @@ For the simulation it is in iris_ur10e/ur_e_gazebo/controller/arm_controller.yam
 import rospy
 import numpy as np
 from functools import partial
-from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from gesture_utils.frameworks.control_mode_interface import ControlModeInterface
 from gesture_utils.scripts.wrgripper import CR200Plug
 
 from std_msgs.msg import Float64MultiArray  # Import the message type

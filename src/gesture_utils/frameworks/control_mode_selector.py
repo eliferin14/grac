@@ -2,7 +2,7 @@ import rospy
 from functools import partial
 import numpy as np
 
-from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from gesture_utils.frameworks.control_mode_interface import ControlModeInterface
 
 
     

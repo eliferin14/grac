@@ -130,8 +130,8 @@ def main():
             framework_names=interpreter.framework_names,
             candidate_framework=interpreter.candidate_framework_index,
             selected_framework=interpreter.selected_framework_index,
-            min_theta=interpreter.menu_manager.min_theta,
-            max_theta=interpreter.menu_manager.max_theta
+            #min_theta=interpreter.menu_manager.min_theta,
+            #max_theta=interpreter.menu_manager.max_theta
         )        
         
         # Convert frame to ROS image
@@ -154,7 +154,7 @@ def main():
         if plot_publisher.get_num_connections() > 0:
         
             # Convert world coordinates to a list of ROS points
-            rhwl = convert_matrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
+            rhwl = convert_matrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
             lhwl = convert_matrix_to_ROSpoints(detector.left_hand_world_landmarks_matrix)
             pwl = convert_matrix_to_ROSpoints(detector.pose_world_landmarks_matrix)
             

@@ -4,7 +4,7 @@ import rospy
 import numpy as np
 from functools import partial
 
-from grac.src.gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from gesture_utils.frameworks.control_mode_interface import ControlModeInterface
 
 #import moveit_commander
 from moveit_commander import MoveGroupCommander, RobotCommander
@@ -166,6 +166,9 @@ class ActionBasedControlMode(ControlModeInterface):
         """        
         
         result = True
+
+        if joint_target is None:
+            return False
         
         for t, l in zip(joint_target, self.joint_position_limits):
             if t < l[0] or t > l[1]:
