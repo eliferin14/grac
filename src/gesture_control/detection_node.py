@@ -5,12 +5,13 @@ from std_msgs.msg import String
 import roslib.packages
 import os
 import cv2
+import time
 
 from std_msgs.msg import Header 
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
-from gesture_control.msg import draw, plot
+from gesture_control.msg import draw, plot, timestamps
 from gesture_utils.gesture_detector import GestureDetector
 from gesture_utils.gesture_detector import GestureDetector
 from gesture_utils.ros_utils import convert_matrix_to_ROSpoints
@@ -31,6 +32,10 @@ detector = GestureDetector(
 
 # Initialise FPS counter
 fps_counter = FPS_Counter()
+
+# Initialise timestamp arrays
+timestamps_times = []
+timestamps_names = []
 
 
 
@@ -54,6 +59,7 @@ def main():
     # Initialize the publishers
     draw_publisher = rospy.Publisher('draw_topic', Image, queue_size=1)
     plot_publisher = rospy.Publisher('plot_topic', plot, queue_size=10)
+    timestamps_publisher = rospy.Publisher('timestamps_topic', timestamps, queue_size=10)
     
     # Initialize the bridge
     bridge = CvBridge()
@@ -71,9 +77,13 @@ def main():
         ############# GESTURE DETECTION #############
         
         # Capture frame
+        capture_start_time = time.time()
         ret, frame = cam.read()
         if not ret: continue
         frame = cv2.flip(frame, 1)
+        capture_exec_time = time.time() - capture_start_time
+        timestamps_names.append('capture')
+        timestamps_times.append(capture_exec_time)        
         
         fps = fps_counter.get_fps()
         
@@ -91,7 +101,6 @@ def main():
         callback = interpreter.interpret_gestures(
             frame=frame,
             fps=fps,
-            #arm=arm,
             rhg=rh_gesture,
             lhg=lh_gesture,
             rhl=detector.right_hand_landmarks_matrix,
@@ -109,6 +118,7 @@ def main():
         ############# DRAWING #############
         
         # Draw stuff on the frame 
+        drawing_start_time = time.time()
         draw_on_frame(
             frame=frame,
             rhg=rh_gesture,
@@ -129,7 +139,11 @@ def main():
         
         # Publish on the draw topic
         draw_publisher.publish(ros_image)
-        rospy.logdebug("Published image and landmarks to /draw_topic")   
+        rospy.logdebug("Published image and landmarks to /draw_topic") 
+        
+        drawing_exec_time = time.time() - drawing_start_time
+        timestamps_names.append('drawing')
+        timestamps_times.append(drawing_exec_time)  
         
         
         
@@ -151,7 +165,17 @@ def main():
             plot_msg.lh_landmarks = lhwl
             plot_msg.pose_landmarks = pwl
             plot_publisher.publish(plot_msg)
-            rospy.logdebug("Published landmarks to /plot_topic")   
+            rospy.logdebug("Published landmarks to /plot_topic") 
+            
+            
+            
+        # Publish execution times
+        timestamps_msg = timestamps()
+        timestamps_msg.header = Header()
+        timestamps_msg.header.stamp = rospy.Time.now()
+        timestamps_msg.operation_names = timestamps_names
+        timestamps_msg.execution_times = timestamps_times
+        timestamps_publisher.publish(timestamps_msg)  
         
         rate.sleep()
         
