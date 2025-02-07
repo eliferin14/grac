@@ -186,6 +186,7 @@ def main():
         timestamps_msg.header.stamp = rospy.Time.now()
         timestamps_msg.operation_names = timestamps_names
         timestamps_msg.execution_times = timestamps_times
+        timestamps_msg.num_hands = detector.num_hands
         timestamps_publisher.publish(timestamps_msg)  
         
         rate.sleep()
