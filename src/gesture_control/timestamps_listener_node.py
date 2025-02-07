@@ -20,7 +20,7 @@ def create_file_if_not_exists():
     if not os.path.exists(filename):
         with open(filename, 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["Timestamp"] + ["hands"] + ["Op1", "Op2", "Op3"])  # Adjust headers if needed
+            writer.writerow(["Timestamp"] + ["hands"] + ["capture", "landmarks", "gestures", "interpret", "drawing"])  # Adjust headers if needed
         rospy.loginfo("File created: %s", filename)
 
 # Initialize the file (create if not exists)
