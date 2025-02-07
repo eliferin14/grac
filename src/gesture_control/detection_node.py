@@ -74,6 +74,9 @@ def main():
     # Loop indefinitely
     while not rospy.is_shutdown():
         
+        timestamps_times = []
+        timestamps_names = []
+        
         ############# GESTURE DETECTION #############
         
         # Capture frame
@@ -89,6 +92,10 @@ def main():
         
         # Process frame (detect hands and pose)
         detector.process(frame)
+        timestamps_names.append('landmarks')
+        timestamps_times.append(detector.landmarks_exec_time)
+        timestamps_names.append('gesture')
+        timestamps_times.append(detector.gesture_exec_time)
         
         # Extract gestures
         rh_gesture, lh_gesture = detector.get_hand_gestures()
@@ -98,6 +105,7 @@ def main():
         ############# GESTURE INTERPRETATION #############
         
         # Call the gesture interpreter
+        interpret_start_time = time.time()
         callback = interpreter.interpret_gestures(
             frame=frame,
             fps=fps,
@@ -108,6 +116,9 @@ def main():
             lhl=detector.left_hand_landmarks_matrix,
             pl=detector.pose_landmarks_matrix
         )
+        interpret_exec_time = time.time() - interpret_start_time
+        timestamps_names.append('interpret')
+        timestamps_times.append(interpret_exec_time)
         
         # Execute the selected callback        
         result = callback()

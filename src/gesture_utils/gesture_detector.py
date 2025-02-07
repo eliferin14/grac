@@ -10,6 +10,7 @@ from mediapipe.python.solutions.pose import PoseLandmark
 from copy import deepcopy
 import threading
 import zipfile
+import time
 
 from gesture_utils.fps_counter import FPS_Counter
 from gesture_utils.gesture_filter import GestureFilter
@@ -362,7 +363,9 @@ class GestureDetector():
         """        ''''''
         
         # Call the hand landmarker model
+        landmarks_start_time = time.time()
         results = self.hand_landmarker.process(rgb_frame)
+        self.landmarks_exec_time = time.time() - landmarks_start_time
         
         # Reset outputs to None
         self.right_hand_gesture, self.left_hand_gesture = None, None            
@@ -372,6 +375,7 @@ class GestureDetector():
         self.right_hand_data, self.left_hand_data = HandData(), HandData()
         
         # Process the results
+        gesture_start_time = time.time()
         if results.multi_hand_landmarks:
             
             for hand_landmarks, hand_world_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_hand_world_landmarks, results.multi_handedness):
@@ -419,6 +423,7 @@ class GestureDetector():
                     self.left_hand_landmarks = hand_landmarks
                     self.left_hand_data = HandData(landmarks=hand_landmarks_tensor[0], gesture=gesture, handedness='Left')
     
+        self.gesture_exec_time = time.time() - gesture_start_time
     
     
     
