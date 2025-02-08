@@ -31,23 +31,28 @@ bin_size = args.bin_size
 
 # Handle different num_hands cases
 if args.num_hands < 0:
-    data = df[column].dropna()
-    mean_value = data.mean()
-elif args.num_hands in [0, 1, 2]:
-    data = df[df['hands'] == args.num_hands][column].dropna()
-    mean_value = data.mean()
+    data_0 = df[df['hands'] == 0][column].dropna()
+    data_1 = df[df['hands'] == 1][column].dropna()
+    data_2 = df[df['hands'] == 2][column].dropna()
+    data = pd.concat([data_0, data_1, data_2])  # For binning consistency
+    mean_value_0 = data_0.mean()
+    mean_value_1 = data_1.mean()
+    mean_value_2 = data_2.mean()
 elif args.num_hands == 12:
     data_1 = df[df['hands'] == 1][column].dropna()
     data_2 = df[df['hands'] == 2][column].dropna()
     data = pd.concat([data_1, data_2])  # For binning consistency
     mean_value_1 = data_1.mean()
     mean_value_2 = data_2.mean()
+elif args.num_hands in [0, 1, 2]:
+    data = df[df['hands'] == args.num_hands][column].dropna()
+    mean_value = data.mean()
 
 # Compute bin counts
 bins = get_bin_counts(data, bin_size)
 
 # Fit distributions (only if not comparing two histograms)
-if args.num_hands != 12:
+if args.num_hands != 12 and args.num_hands < 0:
     dist_names = ['lognorm', 'gamma', 'weibull_min', 'expon']
     best_fit = None
     best_sse = float('inf')
@@ -75,16 +80,27 @@ plt.figure(figsize=(8, 5))
 
 if args.num_hands == 12:
     # Plot two histograms
-    plt.hist(data_1, bins=bins, density=True, alpha=0.6, color='blue', edgecolor='black', label='Hands = 1')
-    plt.hist(data_2, bins=bins, density=True, alpha=0.6, color='green', edgecolor='black', label='Hands = 2')
+    plt.hist(data_1, bins=bins, density=True, alpha=0.6, color='teal', edgecolor='0.25', label='Hands = 1')
+    plt.hist(data_2, bins=bins, density=True, alpha=0.6, color='coral', edgecolor='0.25', label='Hands = 2')
 
     # Vertical lines for means
     plt.axvline(mean_value_1, color='blue', linestyle=':', linewidth=3, label=f'Mean (Hands = 1): {mean_value_1:.2f} ms')
-    plt.axvline(mean_value_2, color='green', linestyle=':', linewidth=2, label=f'Mean (Hands = 2): {mean_value_2:.2f} ms')
+    plt.axvline(mean_value_2, color='red', linestyle=':', linewidth=3, label=f'Mean (Hands = 2): {mean_value_2:.2f} ms')
+
+elif args.num_hands == -1:
+    # Plot three histograms
+    plt.hist(data_0, bins=bins, density=True, alpha=0.6, color='gold', edgecolor='0.25', label='Hands = 0')
+    plt.hist(data_1, bins=bins, density=True, alpha=0.6, color='teal', edgecolor='0.25', label='Hands = 1')
+    plt.hist(data_2, bins=bins, density=True, alpha=0.6, color='coral', edgecolor='0.25', label='Hands = 2')
+
+    # Vertical lines for means
+    plt.axvline(mean_value_0, color='orange', linestyle=':', linewidth=3, label=f'Mean (Hands = 0): {mean_value_0:.2f} ms')
+    plt.axvline(mean_value_1, color='blue', linestyle=':', linewidth=3, label=f'Mean (Hands = 1): {mean_value_1:.2f} ms')
+    plt.axvline(mean_value_2, color='red', linestyle=':', linewidth=3, label=f'Mean (Hands = 2): {mean_value_2:.2f} ms')
 
 else:
     # Plot single histogram
-    plt.hist(data, bins=bins, density=True, alpha=0.6, color='skyblue', edgecolor='gray', label='Histogram')
+    plt.hist(data, bins=bins, density=True, alpha=0.6, color='teal', edgecolor='0.25', label='Histogram')
 
     # Plot best-fitting distribution
     dist = getattr(stats, best_fit)
@@ -93,7 +109,7 @@ else:
     plt.plot(x, pdf_fitted, 'r:', linewidth=2, label=f'Best Fit: {best_fit}')
 
     # Vertical line for mean
-    plt.axvline(mean_value, color='red', linestyle='dashed', linewidth=2, label=f'Mean: {mean_value:.2f} ms')
+    plt.axvline(mean_value, color='blue', linestyle='dashed', linewidth=2, label=f'Mean: {mean_value:.2f} ms')
 
 # Formatting
 plt.xlabel(f'{column} ranges (ms)', fontsize=12)
