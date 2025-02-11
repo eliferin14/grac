@@ -241,6 +241,40 @@ def plot3D(ax, pose_landmarks, right_hand_landmarks, left_hand_landmarks):
 
 
 
+def compute_rotation_matrix_from_target_vector(landmarks, target_normal):
+    # Extract the three points defining the palm of the hand
+    wrist_base, index_base, pinky_base = landmarks[0], landmarks[5], landmarks[17]
+
+    # Compute the normal
+    palm_normal = np.cross(index_base - wrist_base, pinky_base - wrist_base)
+    palm_normal = palm_normal / np.linalg.norm(palm_normal)  # Normalize
+
+    # Compute rotation axis (normalized) and angle
+    rotation_axis = np.cross(palm_normal, target_normal)
+    s = np.linalg.norm(rotation_axis)
+    c = np.dot(palm_normal, target_normal)
+    
+    if np.isclose(s, 0):  # Already aligned
+        return np.eye(3)
+    
+    # Build K as the skew simmetric matrix of the rotation axis
+    vx, vy, vz = rotation_axis / s  # Normalize axis
+    K = np.array([[0, -vz, vy], [vz, 0, -vx], [-vy, vx, 0]])
+    
+    # Get the rotation matrix using Rodrigues' formula
+    R1 = np.eye(3) + s * K + (1 - c) * (K @ K)
+
+    # Get rotation angle to align the hand vertically
+    v = index_base - wrist_base
+    theta = - np.arctan2(v[1], v[0])
+    c, s = np.cos(theta), np.sin(theta)
+    R2 = np.array([[c, -s, 0],
+                  [s,  c, 0],
+                  [0,  0, 1]])
+    return R2@R1
+
+
+
 
 
     
@@ -335,7 +369,7 @@ class GestureDetector():
         if use_threading:
         
             # Create the two threads
-            hands_thread = threading.Thread(target=self._process_hands, args=(rgb_frame,))
+            hands_thread = threading.Thread(target=self._process_hands, args=(rgb_frame,True,))
             pose_thread = threading.Thread(target=self._process_pose,args=(rgb_frame,))
             
             # Start the threads
@@ -388,6 +422,12 @@ class GestureDetector():
                 hand_landmarks_tensor = self._convert_results_to_tensor(hand_landmarks)
                 hand_world_landmarks_tensor = self._convert_results_to_tensor(hand_world_landmarks)
                 handedness_tensor = np.array([[handedness.classification[0].index]]).astype(np.float32)
+
+                # Normalize hand orientation 
+                if ignore_orientation:
+                    target_normal = np.array([0,0,1]) if handedness.classification[0].index == self.RIGHT else np.array([0,0,-1])   # Align to xy plane
+                    R = compute_rotation_matrix_from_target_vector(hand_landmarks_tensor[0], target_normal)
+                    hand_landmarks_tensor[0] = ( R @ hand_landmarks_tensor[0].T ).T
                 
                 # Call the gesture embedder model
                 self.gesture_embedder.set_tensor(self.gesture_embedder_input[0]['index'], hand_landmarks_tensor)

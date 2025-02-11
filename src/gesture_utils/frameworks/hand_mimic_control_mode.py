@@ -286,6 +286,7 @@ class HandMimicControlMode( CartesianControlMode ):
         points2D = rhl[:,:2][coplanar_points_indexes]
         hand_current_position_camera_frame, hand_current_orientation_camera_frame = self.solvePnP_hand(points3D, points2D)
         hand_current_position = self.camera_to_robot_tf @ hand_current_position_camera_frame
+        hand_current_orientation = 0
         
         # Apply filtering to the hand position
         #filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
