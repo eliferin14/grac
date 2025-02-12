@@ -17,6 +17,7 @@ add_message_files(
   draw.msg
   plot.msg
   timestamps.msg
+  trajectories.msg
 )
 
 generate_messages(

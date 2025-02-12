@@ -13,6 +13,7 @@ from gesture_utils.frameworks.cartesian_control_mode import CartesianControlMode
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
 from geometry_msgs.msg import Point
+from gesture_control.msg import trajectories
 
 from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix, quaternion_from_matrix
 
@@ -69,7 +70,6 @@ class ExponentialMovingAverage():
         self.prev_time = None
         self.prev_filtered = None
 
-
 class PositionFilter():
 
     def __init__(self, tau_x, tau_y, tau_z, tau_rx, tau_ry, tau_rz):
@@ -97,12 +97,6 @@ class PositionFilter():
     def reset(self):
         for f in self.filters:
             f.reset()
-
-
-
-
-
-
 
 class ConstantAccelerationKalmanFilter:
     def __init__(self, process_noise=0.01, measurement_noise=1.0):
@@ -140,10 +134,6 @@ class ConstantAccelerationKalmanFilter:
         self.kf.predict()
         self.kf.update(np.array(measurement).reshape(3, 1))
         return self.kf.x[:3].flatten()  # Return estimated position
-
-
-
-
 
 class SavitzkyGolayTrajectorySmoother:
     def __init__(self, window_size=5, poly_order=2):
@@ -239,8 +229,12 @@ class HandMimicControlMode( CartesianControlMode ):
         self.scaling_list = np.logspace( np.log10(min_scaling), np.log10(max_scaling), self.scaling_list_length)
         rospy.loginfo(f"Scaling values: {self.scaling_list}")
 
-        self.publisher_raw = rospy.Publisher('hand_position_raw', Point, queue_size=10)
-        self.publisher_filtered = rospy.Publisher('hand_position_filtered', Point, queue_size=10)
+        self.hand_raw_pub = rospy.Publisher('hand_position_raw', Point, queue_size=10)
+        self.hand_filt_pub = rospy.Publisher('hand_position_filtered', Point, queue_size=10)
+        self.robot_raw_pub = rospy.Publisher('robot_raw_target_position', Point, queue_size=10)
+        self.robot_smooth_pub = rospy.Publisher('robot_smoothed_target_position', Point, queue_size=10)
+
+        self.trajectories_publisher = rospy.Publisher('hand_mimic_trajectories', trajectories, queue_size=10)
         
         
         
@@ -251,7 +245,6 @@ class HandMimicControlMode( CartesianControlMode ):
         # Extract parameters from kwargs
         rhg = kwargs['rhg']
         lhg = kwargs['lhg']
-        pl = kwargs['pl']
         rhl = kwargs['rhl']
         rhwl = kwargs['rhwl']
         
@@ -284,7 +277,7 @@ class HandMimicControlMode( CartesianControlMode ):
         coplanar_points_indexes = np.arange(21)
         points3D = rhwl[coplanar_points_indexes]
         points2D = rhl[:,:2][coplanar_points_indexes]
-        hand_current_position_camera_frame, hand_current_orientation_camera_frame = self.solvePnP_hand(points3D, points2D)
+        hand_current_position_camera_frame = self.solvePnP_hand(points3D, points2D)
         hand_current_position = self.camera_to_robot_tf @ hand_current_position_camera_frame
         hand_current_orientation = 0
         
@@ -294,19 +287,19 @@ class HandMimicControlMode( CartesianControlMode ):
         filtered_position = hand_current_position
         #rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
 
-        # Publish the raw position
-        point = Point()
-        point.x = hand_current_position[0]
-        point.y = hand_current_position[1]
-        point.z = hand_current_position[2]
-        self.publisher_raw.publish(point)
+        # Publish the hand raw position
+        hand_raw_point = Point()
+        hand_raw_point.x = hand_current_position[0]
+        hand_raw_point.y = hand_current_position[1]
+        hand_raw_point.z = hand_current_position[2]
+        self.hand_raw_pub.publish(hand_raw_point)
 
-        # Publish the filtered position
-        point = Point()
-        point.x = filtered_position[0]
-        point.y = filtered_position[1]
-        point.z = filtered_position[2]
-        self.publisher_filtered.publish(point)
+        # Publish the hand filtered position
+        hand_filtered_point = Point()
+        hand_filtered_point.x = filtered_position[0]
+        hand_filtered_point.y = filtered_position[1]
+        hand_filtered_point.z = filtered_position[2]
+        self.hand_filt_pub.publish(hand_filtered_point)
 
         # Get current pose of the robot and store it
         robot_pose = self.group_commander.get_current_pose().pose
@@ -367,16 +360,36 @@ class HandMimicControlMode( CartesianControlMode ):
         #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
         
         # Calculate the target pose for the robot (starting pose + scaled delta vector)
-        robot_target_position = self.robot_previous_position + robot_delta_position
-        robot_target_position = self.sg_smoother.update(robot_target_position)
+        robot_target_position_raw = self.robot_previous_position + robot_delta_position
+        robot_target_position = self.sg_smoother.update(robot_target_position_raw)
         robot_target_orientation = self.robot_previous_orientation
         robot_target_pose = self.convert_p_q_to_pose(robot_target_position, robot_target_orientation)
         rospy.logdebug(robot_target_pose)
+
+        # Publish the robot raw target position
+        robot_raw_target_point = Point()
+        robot_raw_target_point.x = robot_target_position_raw[0]
+        robot_raw_target_point.y = robot_target_position_raw[1]
+        robot_raw_target_point.z = robot_target_position_raw[2]
+
+        # Publish the robot smoothed target position
+        robot_smoothed_target_point = Point()
+        robot_smoothed_target_point.x = robot_target_position[0]
+        robot_smoothed_target_point.y = robot_target_position[1]
+        robot_smoothed_target_point.z = robot_target_position[2]
 
         # Substitute the previous position with the current one for the next iteration
         self.hand_previous_position = filtered_position      
         self.robot_previous_position = robot_target_position #NOTE This could be changed to the current robot position instead of the previous target
 
+
+        # Publish the trajectories
+        trajectories_msg = trajectories()
+        trajectories_msg.points.append(hand_raw_point)
+        trajectories_msg.points.append(hand_filtered_point)
+        trajectories_msg.points.append(robot_raw_target_point)
+        trajectories_msg.points.append(robot_smoothed_target_point)
+        self.trajectories_publisher.publish(trajectories_msg)
 
 
         
@@ -425,11 +438,11 @@ class HandMimicControlMode( CartesianControlMode ):
         # Get the position of the wrist base in camera frame
         R, _ = cv2.Rodrigues(rvec)
         wrist_pos = R @ points3D[0].reshape((-1)) + tvec.reshape((-1))
-        wrist_oriientation = quaternion_from_matrix(R)
+        #wrist_oriientation = quaternion_from_matrix(np.eye(3)) # quaternion_from_matrix(R)
 
         #rospy.loginfo(f"Estimated wrist positon in camera frame: {wrist_pos}")
 
-        return wrist_pos.reshape((-1)), wrist_oriientation
+        return wrist_pos.reshape((-1))#, wrist_oriientation
             
             
 
