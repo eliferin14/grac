@@ -8,11 +8,14 @@ from gesture_control.msg import trajectories
 from moveit_commander import MoveGroupCommander
 import os
 import argparse
+import tf
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--filename', type=str, default="trajectories.npy")
 args = parser.parse_args()
 print(args)
+
+rospy.init_node('trajectory_listener', anonymous=True)
 
 # Find the model directory absolute path
 data_realtive_path = "data"
@@ -21,12 +24,13 @@ data_absolute_path = os.path.join(package_path, data_realtive_path)
 file_absolute_path = os.path.join(data_absolute_path, args.filename)
 
 # Create the tensor
-num_trajectories = 5
+num_trajectories = 7
 trajectories_tensor = np.zeros((1,num_trajectories,3))    # Time, trajectory, coordinate
 
 # Initialize the commander
 group_commander = MoveGroupCommander("manipulator")
 
+tf_listener = tf.TransformListener()
 
 
 def callback(msg):
@@ -47,11 +51,16 @@ def callback(msg):
     # Poll the robot position
     robot_pose = group_commander.get_current_pose().pose
     point_array = np.array([robot_pose.position.x, robot_pose.position.y, robot_pose.position.z])
+    trajectories_matrix[-1] = point_array
+
+    (trans, rot) = tf_listener.lookupTransform('/base_link', '/gripper_link', rospy.Time(0))
+    trajectories_matrix[-1,:] = trans
+    rospy.loginfo(f"{trans} -> {trajectories_matrix[-1,:]}")
 
     # Save the matrix into the tensor
     trajectories_tensor = np.append(trajectories_tensor, [trajectories_matrix], axis=0)
 
-    rospy.loginfo(f"Matrix dimension: {trajectories_matrix.shape}; Tensor dimensions: {trajectories_tensor.shape}")
+    #rospy.loginfo(f"Matrix dimension: {trajectories_matrix.shape}; Tensor dimensions: {trajectories_tensor.shape}")
 
 
 
@@ -70,7 +79,6 @@ def shutdown_hook():
 
 
 def listener():
-    rospy.init_node('trajectory_listener', anonymous=True)
     rospy.Subscriber('/hand_mimic_trajectories', trajectories, callback)  # Replace with your actual topic
     rospy.on_shutdown(shutdown_hook)
     rospy.spin()

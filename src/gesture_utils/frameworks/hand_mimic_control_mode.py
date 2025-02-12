@@ -57,6 +57,7 @@ class ExponentialMovingAverage():
 
         # Calculate time-normalized decay factor
         alpha = 1 - np.exp(-delta_t / self.tau)
+        #alpha = 0.999
 
         # Update the filtered value
         self.prev_filtered = alpha * value + (1 - alpha) * self.prev_filtered
@@ -69,6 +70,9 @@ class ExponentialMovingAverage():
     def reset(self):
         self.prev_time = None
         self.prev_filtered = None
+
+
+
 
 class PositionFilter():
 
@@ -201,7 +205,7 @@ class HandMimicControlMode( CartesianControlMode ):
     # Initialise filters
     ema_position_filter = PositionFilter(0.3,0.3,0.3,0.001,0.001,0.001)
     ca_filter = ConstantAccelerationKalmanFilter(process_noise=0.01, measurement_noise=100)
-    sg_smoother = SavitzkyGolayTrajectorySmoother(window_size=9, poly_order=2)
+    sg_smoother = SavitzkyGolayTrajectorySmoother(window_size=13, poly_order=2)
 
     # Define a scaling factor for the depth coordinate
     depth_scaling = 1
@@ -282,9 +286,9 @@ class HandMimicControlMode( CartesianControlMode ):
         hand_current_orientation = 0
         
         # Apply filtering to the hand position
-        #filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
+        filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
         #filtered_position = self.ca_filter.update(hand_current_position, current_time)
-        filtered_position = hand_current_position
+        #filtered_position = hand_current_position
         #rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
 
         # Publish the hand raw position
@@ -343,9 +347,9 @@ class HandMimicControlMode( CartesianControlMode ):
         rospy.logdebug(f"Hand starting position: {self.hand_previous_position}")
         #rospy.logdebug(f"Hand current position: {filtered_position}")
         #hand_delta_position = filtered_position - self.hand_previous_position
-        hand_delta_position = hand_current_position - self.hand_previous_position
-        hand_delta_position = self.ema_position_filter.update(hand_delta_position, current_time)
-        hand_delta_position = self.suppress_noise(hand_delta_position, 5e-4)
+        hand_delta_position = filtered_position - self.hand_previous_position
+        #hand_delta_position = self.ema_position_filter.update(hand_delta_position, current_time)
+        hand_delta_position = self.suppress_noise(hand_delta_position, 1e-3)
         #rospy.loginfo(f"Hand delta position: {hand_delta_position}")
 
         # Compensate depth scaling
@@ -353,7 +357,12 @@ class HandMimicControlMode( CartesianControlMode ):
  
         # Apply scaling to obtain the delta vector for the robot
         robot_delta_position = scaling_factor * hand_delta_position
-        rospy.logdebug(f"Robot delta position before rotation: {robot_delta_position}")
+        #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
+
+        hand_delta_point = Point(x=hand_delta_position[0], y=hand_delta_position[1], z=hand_delta_position[2])
+        robot_delta_point = Point(x=robot_delta_position[0], y=robot_delta_position[1], z=robot_delta_position[2])
+        rospy.loginfo(f"Hand delta position: {hand_delta_point}")
+        rospy.loginfo(f"Robot delta position: {robot_delta_point}")
         
         # Change of coordinates to have the axes of the camera aligned with the robot base frame
         #robot_delta_position =  robot_delta_position
@@ -378,9 +387,7 @@ class HandMimicControlMode( CartesianControlMode ):
         robot_smoothed_target_point.y = robot_target_position[1]
         robot_smoothed_target_point.z = robot_target_position[2]
 
-        # Substitute the previous position with the current one for the next iteration
-        self.hand_previous_position = filtered_position      
-        self.robot_previous_position = robot_target_position #NOTE This could be changed to the current robot position instead of the previous target
+
 
 
         # Publish the trajectories
@@ -389,7 +396,19 @@ class HandMimicControlMode( CartesianControlMode ):
         trajectories_msg.points.append(hand_filtered_point)
         trajectories_msg.points.append(robot_raw_target_point)
         trajectories_msg.points.append(robot_smoothed_target_point)
+        trajectories_msg.points.append(hand_delta_point)
+        trajectories_msg.points.append(robot_delta_point)
+
         self.trajectories_publisher.publish(trajectories_msg)
+
+
+
+
+        # Substitute the previous position with the current one for the next iteration
+        self.hand_previous_position = filtered_position      
+        self.robot_previous_position = robot_target_position #NOTE This could be changed to the current robot position instead of the previous target
+
+
 
 
         
