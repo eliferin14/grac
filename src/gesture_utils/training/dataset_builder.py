@@ -38,6 +38,7 @@ parser.add_argument('-mspg', '--max_samples_per_gesture', type=int, default=200,
 parser.add_argument("--merge_palm_stop", action='store_true', help="If True palm and stop are considered both palm")
 parser.add_argument("--merge_two_twoup", action='store_true', help="If True two and two_up are considered both two")
 parser.add_argument("--add_random_rotation", action='store_true', help="If True the images are rotated by a random angle when copied")
+# python3 dataset_builder.py -fdp /home/iris/Downloads/archive/hagrid-sample-30k-384p/hagrid_30k/ -mdp my_dataset --reduce_dataset -rdp reduced_dataset --gesture_whitelist fist palm one two three four pick L -mspg 100 --merge_palm_stop --merge_two_twoup
 
 args = parser.parse_args()
 print(args)
@@ -46,11 +47,12 @@ print(args)
 fdp = args.full_dataset_path
 mdp = args.my_dataset_path
 rdp = args.reduced_dataset_path
-whitelist = args.gesture_whitelist
+whitelist = args.gesture_whitelist + ['none']
 
 # Calculate how many pictures to take from the full dataset and my dataset
 num_fd = int( args.max_samples_per_gesture * args.full_my_ratio )
 num_md = args.max_samples_per_gesture - num_fd
+print(f"#images from full dataset: {num_fd}; #images from my dataset: {num_md}")
 
 # Delete the old dataset and model
 try:
@@ -61,8 +63,7 @@ except OSError as e:
     print(f"Error: {e.strerror}")
 
 # Scan the full dataset, and copy the whitelisted gestures in their folder, and the blacklisted gestures in the none folder
-if args.reduce_dataset:
-                
+if args.reduce_dataset:                
                 
     print("\nGestures found in my dataset:")
     for folder in os.listdir(mdp):
@@ -75,18 +76,18 @@ if args.reduce_dataset:
                 print(f"\t{folder} -> whitelisted")            
                 rdp_gesture_path = os.path.join(rdp, folder)
                 
+            # Check merge flags
+            elif args.merge_palm_stop and (folder == 'stop' or folder == 'stop_inverted') and 'palm' in whitelist: 
+                print(f"\tMerging \'{folder}\' into \'palm\'")          
+                rdp_gesture_path = os.path.join(rdp, 'palm')
+                
+            elif args.merge_two_twoup and (folder == 'two_up' or folder == 'two_up_inverted') and 'two' in whitelist: 
+                print(f"\tMerging \'{folder}\' into \'two\'")          
+                rdp_gesture_path = os.path.join(rdp, 'two')
+                
             else:
                 print(f"\t{folder} -> blacklisted")            
                 rdp_gesture_path = os.path.join(rdp, 'none')
-                
-            # Check merge flags
-            if args.merge_palm_stop and folder == 'stop' and 'palm' in whitelist: 
-                print("\tMerging \'stop\' into \'palm\'")          
-                rdp_gesture_path = os.path.join(rdp, 'palm')
-                
-            if args.merge_two_twoup and folder == 'two_up' and 'two' in whitelist: 
-                print("\tMerging \'two_up\' into \'two\'")          
-                rdp_gesture_path = os.path.join(rdp, 'two')
                 
             # Create the folder if necessary
             if not os.path.exists(rdp_gesture_path):
@@ -94,7 +95,7 @@ if args.reduce_dataset:
 
             # Load all filenames and shuffle
             image_files = os.listdir(mdp_gesture_path)
-            num_images = min(num_md, len(image_files))
+            num_images = min(num_md, len(image_files)) if folder in os.listdir(rdp) else args.max_samples_per_gesture
             random.shuffle(image_files)
 
             # Copy the desired number of files
@@ -137,18 +138,18 @@ if args.reduce_dataset:
                 print(f"\t{folder} -> whitelisted")            
                 rdp_gesture_path = os.path.join(rdp, folder)
                 
+            # Check merge flags
+            elif args.merge_palm_stop and (folder == 'stop' or folder == 'stop_inverted') and 'palm' in whitelist: 
+                print(f"\tMerging \'{folder}\' into \'palm\'")          
+                rdp_gesture_path = os.path.join(rdp, 'palm')
+                
+            elif args.merge_two_twoup and (folder == 'two_up' or folder == 'two_up_inverted') and 'two' in whitelist: 
+                print(f"\tMerging \'{folder}\' into \'two\'")          
+                rdp_gesture_path = os.path.join(rdp, 'two')
+                
             else:
                 print(f"\t{folder} -> blacklisted")            
                 rdp_gesture_path = os.path.join(rdp, 'none')
-                
-            # Check merge flags
-            if args.merge_palm_stop and folder == 'stop' and 'palm' in whitelist: 
-                print("\tMerging \'stop\' into \'palm\'")          
-                rdp_gesture_path = os.path.join(rdp, 'palm')
-                
-            if args.merge_two_twoup and folder == 'two_up' and 'two' in whitelist: 
-                print("\tMerging \'two_up\' into \'two\'")          
-                rdp_gesture_path = os.path.join(rdp, 'two')
                 
             # Create the folder if necessary
             if not os.path.exists(rdp_gesture_path):

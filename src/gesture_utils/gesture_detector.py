@@ -369,7 +369,7 @@ class GestureDetector():
         if use_threading:
         
             # Create the two threads
-            hands_thread = threading.Thread(target=self._process_hands, args=(rgb_frame,True,))
+            hands_thread = threading.Thread(target=self._process_hands, args=(rgb_frame,False,))
             pose_thread = threading.Thread(target=self._process_pose,args=(rgb_frame,))
             
             # Start the threads

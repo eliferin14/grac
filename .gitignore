@@ -53,4 +53,6 @@ CATKIN_IGNORE
 
 # Ignore SAMI stuff
 /src/iris_sami
+
+/src/gesture_utils/training/reduced_dataset
 /src/iris_ur10e

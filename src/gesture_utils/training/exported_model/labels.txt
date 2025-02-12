@@ -7,4 +7,3 @@ palm
 pick
 three
 two
-two_up
