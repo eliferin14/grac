@@ -213,8 +213,6 @@ class HandMimicControlMode( CartesianControlMode ):
     # TODO: Define this matrix properly
     camera_to_robot_tf = np.vstack([ [-1,0,0], [0,0,1], [0,-1,0] ])
     #camera_to_robot_tf = np.eye(3)
-
-    camera_matrix = np.eye(3, dtype=np.float32)
     
     
     def __init__(self, group_name="manipulator", min_scaling=0.1, max_scaling=3):
@@ -251,7 +249,10 @@ class HandMimicControlMode( CartesianControlMode ):
         lhg = kwargs['lhg']
         rhl = kwargs['rhl']
         rhwl = kwargs['rhwl']
-        
+        frame = kwargs['frame']
+        camera_matrix = kwargs['camera_matrix']
+        dist_coeffs = np.zeros((1,5))
+        dist_coeffs = kwargs['dist_coeffs']
         
         
         
@@ -278,12 +279,19 @@ class HandMimicControlMode( CartesianControlMode ):
         current_time = time.time() - self.start_time   
 
         # Get hand depth from world coordinates and pixel coordinates
-        coplanar_points_indexes = np.arange(21)
-        points3D = rhwl[coplanar_points_indexes]
-        points2D = rhl[:,:2][coplanar_points_indexes]
-        hand_current_position_camera_frame = self.solvePnP_hand(points3D, points2D)
+        pointf_for_pnp_indexes = np.arange(21) # [0,5,9,13,17,4,8,12,16,20]
+        points3D = rhwl[pointf_for_pnp_indexes]
+        points2D = rhl[:,:2][pointf_for_pnp_indexes]
+        points2D[:,0] *= frame.shape[1]
+        points2D[:,1] *= frame.shape[0]
+        hand_current_position_camera_frame, rvec, tvec = self.solvePnP_hand(points3D, points2D, camera_matrix, dist_coeffs, frame, draw_frame=True)
         hand_current_position = self.camera_to_robot_tf @ hand_current_position_camera_frame
-        hand_current_orientation = 0
+        rospy.loginfo(hand_current_position)
+
+        # Compensate distortions
+        #hand_current_position[2] *= 3/4
+        #hand_current_position[1] += 0.55 * hand_current_position[2] # depth (y coordinate after transformation)
+        #hand_current_position[0] += -0.25 * hand_current_position[2]
         
         # Apply filtering to the hand position
         filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
@@ -292,17 +300,11 @@ class HandMimicControlMode( CartesianControlMode ):
         #rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
 
         # Publish the hand raw position
-        hand_raw_point = Point()
-        hand_raw_point.x = hand_current_position[0]
-        hand_raw_point.y = hand_current_position[1]
-        hand_raw_point.z = hand_current_position[2]
+        hand_raw_point = Point(x=hand_current_position[0], y=hand_current_position[1], z=hand_current_position[2])
         self.hand_raw_pub.publish(hand_raw_point)
 
         # Publish the hand filtered position
-        hand_filtered_point = Point()
-        hand_filtered_point.x = filtered_position[0]
-        hand_filtered_point.y = filtered_position[1]
-        hand_filtered_point.z = filtered_position[2]
+        hand_filtered_point = Point(x=filtered_position[0], y=filtered_position[1], z=filtered_position[2])
         self.hand_filt_pub.publish(hand_filtered_point)
 
         # Get current pose of the robot and store it
@@ -351,9 +353,6 @@ class HandMimicControlMode( CartesianControlMode ):
         #hand_delta_position = self.ema_position_filter.update(hand_delta_position, current_time)
         hand_delta_position = self.suppress_noise(hand_delta_position, 1e-3)
         #rospy.loginfo(f"Hand delta position: {hand_delta_position}")
-
-        # Compensate depth scaling
-        hand_delta_position[2] *= self.depth_scaling
  
         # Apply scaling to obtain the delta vector for the robot
         robot_delta_position = scaling_factor * hand_delta_position
@@ -361,8 +360,8 @@ class HandMimicControlMode( CartesianControlMode ):
 
         hand_delta_point = Point(x=hand_delta_position[0], y=hand_delta_position[1], z=hand_delta_position[2])
         robot_delta_point = Point(x=robot_delta_position[0], y=robot_delta_position[1], z=robot_delta_position[2])
-        rospy.loginfo(f"Hand delta position: {hand_delta_point}")
-        rospy.loginfo(f"Robot delta position: {robot_delta_point}")
+        #rospy.loginfo(f"Hand delta position: {hand_delta_point}")
+        #rospy.loginfo(f"Robot delta position: {robot_delta_point}")
         
         # Change of coordinates to have the axes of the camera aligned with the robot base frame
         #robot_delta_position =  robot_delta_position
@@ -375,17 +374,9 @@ class HandMimicControlMode( CartesianControlMode ):
         robot_target_pose = self.convert_p_q_to_pose(robot_target_position, robot_target_orientation)
         rospy.logdebug(robot_target_pose)
 
-        # Publish the robot raw target position
-        robot_raw_target_point = Point()
-        robot_raw_target_point.x = robot_target_position_raw[0]
-        robot_raw_target_point.y = robot_target_position_raw[1]
-        robot_raw_target_point.z = robot_target_position_raw[2]
-
-        # Publish the robot smoothed target position
-        robot_smoothed_target_point = Point()
-        robot_smoothed_target_point.x = robot_target_position[0]
-        robot_smoothed_target_point.y = robot_target_position[1]
-        robot_smoothed_target_point.z = robot_target_position[2]
+        # Create Point objects
+        robot_raw_target_point = Point(x=robot_target_position_raw[0], y=robot_target_position_raw[1], z=robot_target_position_raw[2])
+        robot_smoothed_target_point = Point(x=robot_target_position[0], y=robot_target_position[1], z=robot_target_position[2])
 
 
 
@@ -406,7 +397,7 @@ class HandMimicControlMode( CartesianControlMode ):
 
         # Substitute the previous position with the current one for the next iteration
         self.hand_previous_position = filtered_position      
-        self.robot_previous_position = robot_target_position #NOTE This could be changed to the current robot position instead of the previous target
+        self.robot_previous_position = robot_position #NOTE This could be changed to the current robot position instead of the previous target
 
 
 
@@ -437,7 +428,7 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
 
-    def solvePnP_hand(self, points3D, points2D):
+    def solvePnP_hand(self, points3D, points2D, camera_matrix, dist_coeffs, frame, draw_frame=True):
 
         assert points2D.shape[1] == 2
         assert points3D.shape[0] == points2D.shape[0]
@@ -449,19 +440,41 @@ class HandMimicControlMode( CartesianControlMode ):
         rospy.loginfo(f"AB: {normAB:.4f}, BC: {normBC:.4f}, AC: {normAC:.4f}") """
 
         # Get rotation and translation vectors from points
-        ret, rvec, tvec, _ = cv2.solvePnPRansac(points3D, points2D, self.camera_matrix, np.zeros((5,1)))
+        ret, rvec, tvec, _ = cv2.solvePnPRansac(points3D, points2D, camera_matrix, dist_coeffs)
         #rospy.loginfo(f"Translation vector: {tvec}")
+        rospy.loginfo(f"Rotation vector: {rvec}")
         if not ret:
             raise ValueError
 
         # Get the position of the wrist base in camera frame
         R, _ = cv2.Rodrigues(rvec)
-        wrist_pos = R @ points3D[0].reshape((-1)) + tvec.reshape((-1))
+        wrist_pos = tvec.reshape((-1)) # + R @ points3D[4].reshape((-1)) 
         #wrist_oriientation = quaternion_from_matrix(np.eye(3)) # quaternion_from_matrix(R)
 
-        #rospy.loginfo(f"Estimated wrist positon in camera frame: {wrist_pos}")
+        # Define a reference frame
+        axis_length = 0.05
+        rf_points = np.float32([[axis_length, 0, 0], [0, axis_length, 0], [0, 0, axis_length], [0,0,0]]).reshape(-1, 3)
 
-        return wrist_pos.reshape((-1))#, wrist_oriientation
+        # Define which point is the reference point for the hand
+        ref_index = -1
+        if ref_index >= 0:
+            wrist_pos += R @ points3D[ref_index].reshape((-1))
+            rf_points += points3D[ref_index]
+        
+        imgpts, _ = cv2.projectPoints(rf_points, rvec, tvec, camera_matrix, dist_coeffs)
+        origin = tuple(imgpts[3].ravel().astype(int))
+        #rospy.loginfo(f"Origin: {origin}")
+        imgpts = imgpts.astype(int)
+
+        # Draw reference frame on undistorted image
+        frame = cv2.circle(frame, origin, radius=1, color=(0,255,255))
+        frame = cv2.circle(frame, origin, radius=10, color=(0,255,255))
+        frame = cv2.circle(frame, origin, radius=50, color=(0,255,255))
+        frame = cv2.line(frame, origin, tuple(imgpts[0].ravel()), (0, 0, 255), 3)  # X-axis (red)
+        frame = cv2.line(frame, origin, tuple(imgpts[1].ravel()), (0, 255, 0), 3)  # Y-axis (green)
+        frame = cv2.line(frame, origin, tuple(imgpts[2].ravel()), (255, 0, 0), 3)  # Z-axis (blue)
+
+        return wrist_pos.reshape((-1)), rvec, tvec#, wrist_oriientation
             
             
 

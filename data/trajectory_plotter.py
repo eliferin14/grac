@@ -129,12 +129,20 @@ plot_trajectories_with_bounding_cube(ax_hand,
                                      markers=['x', '']
                                      )
 
-plot_trajectories_with_bounding_cube(ax_robot, 
+""" plot_trajectories_with_bounding_cube(ax_robot, 
                                      trajectories=[robot_raw_trajectory, robot_smoothed_trajectory, robot_measured_trajectory],
                                      title="Robot position",
                                      labels=['Raw', 'Smoothed', 'Measured'],
                                      colors=['k','g', 'b'],
                                      markers=['x', 'o', '']
+                                     ) """
+
+plot_trajectories_with_bounding_cube(ax_robot, 
+                                     trajectories=[robot_raw_trajectory, robot_smoothed_trajectory],
+                                     title="Robot position",
+                                     labels=['Raw', 'Smoothed'],
+                                     colors=['k','g'],
+                                     markers=['x', '']
                                      )
 
 plot_trajectories_with_bounding_cube(ax_delta, 

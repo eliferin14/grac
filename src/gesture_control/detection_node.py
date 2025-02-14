@@ -6,6 +6,7 @@ import roslib.packages
 import os
 import cv2
 import time
+import numpy as np
 
 from std_msgs.msg import Header 
 from cv_bridge import CvBridge
@@ -37,6 +38,11 @@ fps_counter = FPS_Counter()
 timestamps_times = []
 timestamps_names = []
 
+# Camera calibration parameters
+cal_res_relative_path = "src/gesture_utils/camera_calibration/camera_calibration_results.npz"
+cal_res = np.load(os.path.join(package_path, cal_res_relative_path))
+camera_matrix = cal_res["camera_matrix"]
+dist_coeffs = cal_res["dist_coeffs"]
 
 
 
@@ -67,6 +73,8 @@ def main():
     # Open camera
     cam_id = rospy.get_param('/detection_node/camera_id', 2)
     cam = cv2.VideoCapture(cam_id)
+
+    rospy.loginfo(f"Camera matrix: \n{camera_matrix}; distortion coefficients: {dist_coeffs}")
     
     
     
@@ -82,6 +90,7 @@ def main():
         # Capture frame
         capture_start_time = time.time()
         ret, frame = cam.read()
+        #frame = cv2.undistort(frame, camera_matrix, dist_coeffs)
         if not ret: continue
         frame = cv2.flip(frame, 1)
         capture_exec_time = time.time() - capture_start_time
@@ -114,7 +123,9 @@ def main():
             rhl=detector.right_hand_landmarks_matrix,
             rhwl = detector.right_hand_world_landmarks_matrix,
             lhl=detector.left_hand_landmarks_matrix,
-            pl=detector.pose_landmarks_matrix
+            pl=detector.pose_landmarks_matrix,
+            camera_matrix = camera_matrix,
+            dist_coeffs = dist_coeffs
         )
         interpret_exec_time = time.time() - interpret_start_time
         timestamps_names.append('interpret')
