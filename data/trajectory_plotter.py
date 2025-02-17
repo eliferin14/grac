@@ -33,7 +33,7 @@ robot_delta_points = trajectories_tensor[:,5,:]
 
 robot_measured_trajectory = trajectories_tensor[:,-1,:]
 
-def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors, markers):
+def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors, markers, draw_arrows=True):
     """
     Plots multiple 3D trajectories on the given ax and calculates the smallest bounding cube.
     
@@ -43,7 +43,12 @@ def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors
     """
     # Plot all trajectories
     for traj, label, color, marker in zip(trajectories,labels,colors, markers):
-        ax.plot(traj[:, 0], traj[:, 1], traj[:, 2], label=label, color=color, marker=marker)
+        x, y, z = traj[:,0], traj[:,1], traj[:,2]
+        ax.plot(x, y, z, label=label, color=color, marker=marker)
+
+        if draw_arrows:
+            u, v, w = np.diff(x), np.diff(y), np.diff(z)
+            ax.quiver(x[:-1], y[:-1], z[:-1], u, v, w, color=color, arrow_length_ratio=0.5)
 
     # Compute the bounding cube
     all_points = np.vstack(trajectories)  # Flatten all trajectories into a single array
@@ -126,31 +131,32 @@ plot_trajectories_with_bounding_cube(ax_hand,
                                      title="Hand position",
                                      labels=['Raw', 'Filtered'],
                                      colors=['k','r'],
-                                     markers=['x', '']
+                                     markers=['', '']
                                      )
 
-""" plot_trajectories_with_bounding_cube(ax_robot, 
+plot_trajectories_with_bounding_cube(ax_robot, 
                                      trajectories=[robot_raw_trajectory, robot_smoothed_trajectory, robot_measured_trajectory],
                                      title="Robot position",
                                      labels=['Raw', 'Smoothed', 'Measured'],
                                      colors=['k','g', 'b'],
-                                     markers=['x', 'o', '']
-                                     ) """
+                                     markers=['x', '', '']
+                                     )
 
-plot_trajectories_with_bounding_cube(ax_robot, 
+""" plot_trajectories_with_bounding_cube(ax_robot, 
                                      trajectories=[robot_raw_trajectory, robot_smoothed_trajectory],
                                      title="Robot position",
                                      labels=['Raw', 'Smoothed'],
                                      colors=['k','g'],
                                      markers=['x', '']
-                                     )
+                                     ) """
 
 plot_trajectories_with_bounding_cube(ax_delta, 
                                      trajectories=[hand_delta_points, robot_delta_points],
                                      title="Displacement vectors",
                                      labels=['Hand', 'Robot'],
                                      colors=['r','g'],
-                                     markers=['x', '']
+                                     markers=['x', ''],
+                                     draw_arrows=False
                                      )
 
 

@@ -15,8 +15,8 @@ from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from geometry_msgs.msg import Point
 from gesture_control.msg import trajectories
 
-from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix, quaternion_from_matrix
-
+from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix, quaternion_from_matrix, rotation_from_matrix, quaternion_conjugate
+from scipy.spatial.transform import Rotation as R
 
 
 
@@ -74,18 +74,19 @@ class ExponentialMovingAverage():
 
 
 
-class PositionFilter():
+class EMAFilter_3_coord():
 
-    def __init__(self, tau_x, tau_y, tau_z, tau_rx, tau_ry, tau_rz):
+    def __init__(self, tau_x, tau_y, tau_z, tau_rx, tau_ry, tau_rz, tau_rw):
 
         # Initialise all the filters
         self.filters = [
             ExponentialMovingAverage(tau_x), 
             ExponentialMovingAverage(tau_y), 
             ExponentialMovingAverage(tau_z),
-            #ExponentialMovingAverage(tau_rx), 
-            #ExponentialMovingAverage(tau_ry), 
-            #ExponentialMovingAverage(tau_rz)
+            ExponentialMovingAverage(tau_rx), 
+            ExponentialMovingAverage(tau_ry), 
+            ExponentialMovingAverage(tau_rz),
+            ExponentialMovingAverage(tau_rw),
         ]
 
     def update(self, new_position, current_time):
@@ -203,7 +204,8 @@ class HandMimicControlMode( CartesianControlMode ):
     scaling_list_length = len(left_gestures_list)
 
     # Initialise filters
-    ema_position_filter = PositionFilter(0.3,0.3,0.3,0.001,0.001,0.001)
+    ema_pose_filter = EMAFilter_3_coord(0.3,0.3,0.3, 0.5, 0.5, 0.5, 0.5)
+    
     ca_filter = ConstantAccelerationKalmanFilter(process_noise=0.01, measurement_noise=100)
     sg_smoother = SavitzkyGolayTrajectorySmoother(window_size=13, poly_order=2)
 
@@ -211,11 +213,12 @@ class HandMimicControlMode( CartesianControlMode ):
     depth_scaling = 1
     
     # TODO: Define this matrix properly
-    camera_to_robot_tf = np.vstack([ [-1,0,0], [0,0,1], [0,-1,0] ])
-    #camera_to_robot_tf = np.eye(3)
+    camera_to_robot_R = np.vstack([ [0,0,-1], [-1,0,0], [0,-1,0] ])
+    hand_to_camera_R = np.vstack([ [1,0,0], [0,1,0], [0,0,1] ])
+    #hand_to_robot_R = np.eye(3) #np.vstack([[1,0,0], [0,0,1], [0,1,0]])
     
     
-    def __init__(self, group_name="manipulator", min_scaling=0.1, max_scaling=3):
+    def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=5):
         
         super().__init__(group_name)
         
@@ -225,6 +228,7 @@ class HandMimicControlMode( CartesianControlMode ):
         # Declare the starting points for hand and robot
         self.hand_previous_position, self.robot_previous_position = None, None
         self.hand_previous_orientation, self.robot_previous_orientation = None, None
+        self.palm_previous_R = np.eye(3)
         self.is_mimicking = False
         
         # Calculate the scaling values
@@ -251,32 +255,18 @@ class HandMimicControlMode( CartesianControlMode ):
         rhwl = kwargs['rhwl']
         frame = kwargs['frame']
         camera_matrix = kwargs['camera_matrix']
-        dist_coeffs = np.zeros((1,5))
         dist_coeffs = kwargs['dist_coeffs']
-        
-        
-        
-        
-        ############## ACTION SELECTION #######################
-    
-        # If the lhg is not in the list, do nothing
-        # Check the right hand: move only when it is in 'pick'
-        if lhg not in self.left_gestures_list    or   not rhg == 'pick' :
-            # Reset the flag
-            self.is_mimicking = False
 
-            # Reset all the filters
-            self.ema_position_filter.reset()
-            self.sg_smoother.reset()
 
-            # Store the starting time
-            self.start_time = time.time() 
-
-            return partial(self.stop)      
+        if len(rhwl) <= 0 or len(rhl) <= 0:
+            return partial(self.stop)     
         
-
-        # Measure the time that has passed from the beginning of the mimicking (needed for filtering)
-        current_time = time.time() - self.start_time   
+        
+        
+        
+        ############## ACTION SELECTION #######################  
+        
+  
 
         # Get hand depth from world coordinates and pixel coordinates
         pointf_for_pnp_indexes = np.arange(21) # [0,5,9,13,17,4,8,12,16,20]
@@ -285,31 +275,73 @@ class HandMimicControlMode( CartesianControlMode ):
         points2D[:,0] *= frame.shape[1]
         points2D[:,1] *= frame.shape[0]
         hand_current_position_camera_frame, rvec, tvec = self.solvePnP_hand(points3D, points2D, camera_matrix, dist_coeffs, frame, draw_frame=True)
-        hand_current_position = self.camera_to_robot_tf @ hand_current_position_camera_frame
-        rospy.loginfo(hand_current_position)
+        hand_current_position = self.camera_to_robot_R @ hand_current_position_camera_frame
+        #rospy.loginfo(f"Hand position: {hand_current_position}")
 
-        # Compensate distortions
-        #hand_current_position[2] *= 3/4
-        #hand_current_position[1] += 0.55 * hand_current_position[2] # depth (y coordinate after transformation)
-        #hand_current_position[0] += -0.25 * hand_current_position[2]
+        # Get hand orientation
+        palm_frame_R_in_hand_frame = self.rotation_matrix_from_points(rhwl[0], rhwl[5], rhwl[13])
+        #palm_frame_R_in_hand_frame = rhwl[4] - rhwl[0]
+        hand_current_orientation = self.hand_to_camera_R @ self.camera_to_robot_R @ palm_frame_R_in_hand_frame
+        palm_frame_R_in_base_frame = palm_frame_R_in_hand_frame @ self.hand_to_camera_R @ self.camera_to_robot_R
+        #rospy.loginfo(palm_frame_R_in_base_frame)
+
+        homo_matrix = np.eye(4)
+        homo_matrix[:3,:3] = palm_frame_R_in_base_frame
+        hand_current_orientation = quaternion_from_matrix(homo_matrix)
+        #rospy.loginfo(f"Current quaternion: {hand_current_orientation}")
+
+
+
+        # Define a reference frame
+        axis_length = 0.05
+        rf_points = np.float32([palm_frame_R_in_hand_frame[:,0], palm_frame_R_in_hand_frame[:,1], palm_frame_R_in_hand_frame[:,2], [0,0,0]]).reshape(-1, 3) * axis_length
+
+        """ # Define which point is the reference point for the hand
+        ref_index = -1
+        if ref_index >= 0:
+            wrist_pos += R @ points3D[ref_index].reshape((-1))
+            rf_points += points3D[ref_index] """
         
-        # Apply filtering to the hand position
-        filtered_position = self.ema_position_filter.update(hand_current_position, current_time)
-        #filtered_position = self.ca_filter.update(hand_current_position, current_time)
-        #filtered_position = hand_current_position
-        #rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
+        imgpts, _ = cv2.projectPoints(rf_points, rvec, tvec, camera_matrix, dist_coeffs)
+        origin = tuple(imgpts[3].ravel().astype(int))
+        #rospy.loginfo(f"Origin: {origin}")
+        imgpts = imgpts.astype(int)
 
-        # Publish the hand raw position
-        hand_raw_point = Point(x=hand_current_position[0], y=hand_current_position[1], z=hand_current_position[2])
-        self.hand_raw_pub.publish(hand_raw_point)
+        # Draw reference frame on undistorted image
+        frame = cv2.circle(frame, origin, radius=1, color=(0,255,255))
+        frame = cv2.circle(frame, origin, radius=10, color=(0,255,255))
+        frame = cv2.circle(frame, origin, radius=50, color=(0,255,255))
+        frame = cv2.line(frame, origin, tuple(imgpts[0].ravel()), (0, 0, 255), 3)  # X-axis (red)
+        frame = cv2.line(frame, origin, tuple(imgpts[1].ravel()), (0, 255, 0), 3)  # Y-axis (green)
+        frame = cv2.line(frame, origin, tuple(imgpts[2].ravel()), (255, 0, 0), 3)  # Z-axis (blue)
 
-        # Publish the hand filtered position
-        hand_filtered_point = Point(x=filtered_position[0], y=filtered_position[1], z=filtered_position[2])
-        self.hand_filt_pub.publish(hand_filtered_point)
+
+    
+        # If the lhg is not in the list, do nothing
+        # Check the right hand: move only when it is in 'pick'
+        if lhg not in self.left_gestures_list    or   not rhg == 'pick' :
+            # Reset the flag
+            self.is_mimicking = False
+
+            # Reset all the filters
+            self.ema_pose_filter.reset()
+            self.sg_smoother.reset()
+
+            # Store the starting time
+            self.start_time = time.time() 
+
+            return partial(self.stop)            
+
+        # Measure the time that has passed from the beginning of the mimicking (needed for filtering)
+        current_time = time.time() - self.start_time 
 
         # Get current pose of the robot and store it
         robot_pose = self.group_commander.get_current_pose().pose
         robot_position, robot_orientation = self.convert_pose_to_p_q(robot_pose)
+
+
+
+
 
         
         # If the robot is not already mimicking, define the starting points and flip the flag
@@ -321,7 +353,8 @@ class HandMimicControlMode( CartesianControlMode ):
             
             # Save the starting position of the hand
             self.hand_previous_position = hand_current_position
-            self.hand_previous_orientation = None  
+            self.hand_previous_orientation = hand_current_orientation
+            self.palm_previous_R = palm_frame_R_in_base_frame
 
             self.robot_previous_position = self.sg_smoother.update(robot_position)
             self.robot_previous_orientation = robot_orientation
@@ -335,9 +368,38 @@ class HandMimicControlMode( CartesianControlMode ):
             # Stay still
             return partial(self.stop)
             
+
+        
+
+
+
         
         
         
+        
+
+
+        ################## FILTERS ##################################
+        
+        # Apply filtering to the hand position
+        filtered_pose = self.ema_pose_filter.update(np.hstack([hand_current_position, hand_current_orientation]), current_time)
+
+
+        filtered_position = filtered_pose[:3]
+        filtered_orientation = filtered_pose[3:7]
+        #filtered_position = self.ca_filter.update(hand_current_position, current_time)
+        #filtered_position = hand_current_position
+        #rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
+
+        # Apply filtering to orientation
+        #filtered_orientation = self.ema_orientation_filter.update(hand_current_orientation, current_time)
+        #filtered_orientation = hand_current_orientation
+        #rospy.loginfo(f"Hand orientation: {hand_current_orientation}")
+
+
+
+
+
         
         ############## TARGET DEFINITION ######################
             
@@ -356,30 +418,50 @@ class HandMimicControlMode( CartesianControlMode ):
  
         # Apply scaling to obtain the delta vector for the robot
         robot_delta_position = scaling_factor * hand_delta_position
-        #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
 
-        hand_delta_point = Point(x=hand_delta_position[0], y=hand_delta_position[1], z=hand_delta_position[2])
-        robot_delta_point = Point(x=robot_delta_position[0], y=robot_delta_position[1], z=robot_delta_position[2])
-        #rospy.loginfo(f"Hand delta position: {hand_delta_point}")
-        #rospy.loginfo(f"Robot delta position: {robot_delta_point}")
-        
-        # Change of coordinates to have the axes of the camera aligned with the robot base frame
-        #robot_delta_position =  robot_delta_position
+
+
+
+
+
         #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
+        rotation_quaternion = quaternion_multiply(filtered_orientation, quaternion_conjugate(self.hand_previous_orientation))
+        rotation_vector = R.from_quat(rotation_quaternion).as_rotvec()
+        angle = np.linalg.norm(rotation_vector)
+        axis = rotation_vector / angle if angle > 0 else np.array([1.0, 0.0, 0.0])
+        scaled_rotation_quaternion = quaternion_about_axis(scaling_factor*angle, axis) if angle > np.pi / 50 else [0,0,0,1]
+        #axis, angle =
+        #rotation_quaternion = self.get_rotation_quaternion(filtered_orientation, self.hand_previous_orientation, scaling_factor)
+        #rotation_quaternion = np.array([0,0,0,1])
+        #rospy.loginfo(f"Rotation quaternion: {scaled_rotation_quaternion}")
+        rospy.loginfo(f"Axis: {axis}, angle: {angle}")
+
+
+
+
+
         
         # Calculate the target pose for the robot (starting pose + scaled delta vector)
-        robot_target_position_raw = self.robot_previous_position + robot_delta_position
+        robot_target_position_raw = robot_position + robot_delta_position
         robot_target_position = self.sg_smoother.update(robot_target_position_raw)
-        robot_target_orientation = self.robot_previous_orientation
+
+        robot_target_orientation = quaternion_multiply( scaled_rotation_quaternion, robot_orientation )
+
         robot_target_pose = self.convert_p_q_to_pose(robot_target_position, robot_target_orientation)
         rospy.logdebug(robot_target_pose)
 
+
+
+
+
+
         # Create Point objects
+        hand_raw_point = Point(x=hand_current_position[0], y=hand_current_position[1], z=hand_current_position[2])
+        hand_filtered_point = Point(x=filtered_position[0], y=filtered_position[1], z=filtered_position[2])
+        hand_delta_point = Point(x=hand_delta_position[0], y=hand_delta_position[1], z=hand_delta_position[2])
+        robot_delta_point = Point(x=robot_delta_position[0], y=robot_delta_position[1], z=robot_delta_position[2])
         robot_raw_target_point = Point(x=robot_target_position_raw[0], y=robot_target_position_raw[1], z=robot_target_position_raw[2])
         robot_smoothed_target_point = Point(x=robot_target_position[0], y=robot_target_position[1], z=robot_target_position[2])
-
-
-
 
         # Publish the trajectories
         trajectories_msg = trajectories()
@@ -396,7 +478,8 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
         # Substitute the previous position with the current one for the next iteration
-        self.hand_previous_position = filtered_position      
+        self.hand_previous_position = filtered_position  
+        self.hand_previous_orientation = filtered_orientation    
         self.robot_previous_position = robot_position #NOTE This could be changed to the current robot position instead of the previous target
 
 
@@ -442,7 +525,7 @@ class HandMimicControlMode( CartesianControlMode ):
         # Get rotation and translation vectors from points
         ret, rvec, tvec, _ = cv2.solvePnPRansac(points3D, points2D, camera_matrix, dist_coeffs)
         #rospy.loginfo(f"Translation vector: {tvec}")
-        rospy.loginfo(f"Rotation vector: {rvec}")
+        #rospy.loginfo(f"Rotation vector: {rvec}")
         if not ret:
             raise ValueError
 
@@ -451,31 +534,58 @@ class HandMimicControlMode( CartesianControlMode ):
         wrist_pos = tvec.reshape((-1)) # + R @ points3D[4].reshape((-1)) 
         #wrist_oriientation = quaternion_from_matrix(np.eye(3)) # quaternion_from_matrix(R)
 
-        # Define a reference frame
-        axis_length = 0.05
-        rf_points = np.float32([[axis_length, 0, 0], [0, axis_length, 0], [0, 0, axis_length], [0,0,0]]).reshape(-1, 3)
-
-        # Define which point is the reference point for the hand
-        ref_index = -1
-        if ref_index >= 0:
-            wrist_pos += R @ points3D[ref_index].reshape((-1))
-            rf_points += points3D[ref_index]
         
-        imgpts, _ = cv2.projectPoints(rf_points, rvec, tvec, camera_matrix, dist_coeffs)
-        origin = tuple(imgpts[3].ravel().astype(int))
-        #rospy.loginfo(f"Origin: {origin}")
-        imgpts = imgpts.astype(int)
-
-        # Draw reference frame on undistorted image
-        frame = cv2.circle(frame, origin, radius=1, color=(0,255,255))
-        frame = cv2.circle(frame, origin, radius=10, color=(0,255,255))
-        frame = cv2.circle(frame, origin, radius=50, color=(0,255,255))
-        frame = cv2.line(frame, origin, tuple(imgpts[0].ravel()), (0, 0, 255), 3)  # X-axis (red)
-        frame = cv2.line(frame, origin, tuple(imgpts[1].ravel()), (0, 255, 0), 3)  # Y-axis (green)
-        frame = cv2.line(frame, origin, tuple(imgpts[2].ravel()), (255, 0, 0), 3)  # Z-axis (blue)
 
         return wrist_pos.reshape((-1)), rvec, tvec#, wrist_oriientation
-            
+    
+
+    def get_plane_normal(self, p1, p2, p3):
+
+        v1 = p2 - p1
+        v2 = p3 - p1
+
+        normal = np.cross(v1, v2)
+        normal /= np.linalg.norm(normal)
+
+        return normal
+    
+    def get_rotation_quaternion(self, v, v_prev, scaling_factor):
+
+        v_normalized = v / np.linalg.norm(v)
+        v_prev_normalaized = v_prev / np.linalg.norm(v_prev)
+
+        rotation_axis = np.cross(v_prev_normalaized, v_normalized)
+        axis_norm = np.linalg.norm(rotation_axis)
+
+        # If rotation is negligible, return identity quaternion
+        rospy.loginfo(f"Norm of rotation axis: {axis_norm}")
+        if axis_norm < 1e-6: return np.array([0,0,0,1])
+        
+        rotation_axis /= axis_norm
+        rotation_angle = scaling_factor * np.arccos(np.clip(np.dot(v_prev_normalaized, v_normalized), -1.0, 1.0))
+
+        q = quaternion_about_axis(rotation_angle, rotation_axis)
+        return q
+    
+    def rotation_matrix_from_points(self, p1, p2, p3):
+
+        # Step 1: Compute vectors in the local frame
+        y_axis = p2 - p1  # x-axis (p2 - p1)
+        v2 = p3 - p1  # y-axis (p3 - p1)
+
+        # Step 2: Normalize the x and y vectors to create an orthonormal basis
+        y_axis /= np.linalg.norm(y_axis)  # Normalize the x-axis
+        x_axis = v2 - np.dot(v2, y_axis) * y_axis  # Remove the x-component from v2 (projection on xy-plane)
+        x_axis /= np.linalg.norm(x_axis)  # Normalize the y-axis
+
+        # Step 3: Compute the z-axis using the cross product
+        z_axis = np.cross(x_axis, y_axis)  # z-axis (orthogonal to x and y)
+
+        # Step 4: Construct the rotation matrix (columns are the axes)
+        rotation_matrix = np.column_stack((x_axis, y_axis, z_axis))
+
+        return rotation_matrix
+                
             
 
 
