@@ -14,10 +14,11 @@ parser.add_argument('-g', '--gesture', type=str, default="landmarks")
 parser.add_argument('-cm', '--control_mode', nargs='+', type=str, default="all")
 parser.add_argument('-lhg', type=str, nargs='+',  default="all")
 parser.add_argument('-rhg', type=str, nargs='+', default="all")
-parser.add_argument('-b', '--bin_size', type=float, default=0.001)
+parser.add_argument('-b', '--bin_size', type=float, default=1)
 parser.add_argument('-n', '--num_hands', type=int, default=-1)
 parser.add_argument('-t', '--title', type=str, default="Default title")
 parser.add_argument('-th', '--threshold', type=float, default=0.0)
+parser.add_argument('-sp', '--skip_plot', action="store_true")
 
 args = parser.parse_args()
 print(args)
@@ -29,6 +30,49 @@ print(df.head)
 # Convert seconds to milliseconds
 col_list = ["capture", "landmarks", "gestures", "interpret", "drawing", "ik", "jacobian"]
 df[col_list] = df[col_list] * 1000
+
+# Apply filters
+if args.control_mode != 'all':
+    df = df[ df['control_mode'].isin(args.control_mode) ]
+    print(f"Rows after filtering control mode: {df.shape[0]}")
+if args.lhg != 'all':
+    df = df[ df['lhg'].isin(args.lhg) ]
+    print(f"Rows after filtering lhg: {df.shape[0]}")
+if args.rhg != 'all':
+    df = df[ df['rhg'].isin(args.rhg) ]
+    print(f"Rows after filtering rhg: {df.shape[0]}")
+if args.num_hands > 0:
+    df = df[ df['hands'] == args.num_hands]
+    print(f"Rows after filtering num_hands: {df.shape[0]}")
+
+# Example of removing from multiple columns
+def remove_outliers_iqr_multiple(df, column_names):
+    """Removes outliers from multiple DataFrame columns using the IQR method.
+
+    Args:
+        df (pd.DataFrame): The DataFrame.
+        column_names (list): A list of column names to remove outliers from.
+
+    Returns:
+        pd.DataFrame: A new DataFrame with outliers removed.
+    """
+    filtered_df = df.copy()  # Create a copy to avoid modifying the original
+    for column in column_names:
+        Q1 = filtered_df[column].quantile(0.1)
+        Q3 = filtered_df[column].quantile(0.9)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        filtered_df = filtered_df[(filtered_df[column] >= lower_bound) & (filtered_df[column] <= upper_bound)]
+    return filtered_df
+
+df = remove_outliers_iqr_multiple(df, col_list)
+print(f"Rows after removing outliers: {df.shape[0]}")
+
+# Calculate total time
+total = df[col_list].sum(axis=1)
+df['total'] = total
+#print(df['total'].shape)
 
 # Function to compute bins
 def get_bin_edges(column, bin_range):
@@ -63,19 +107,11 @@ def plot_histogram(data, bins, color, mean_value, mean_color, edgecolor, thresho
 
 
     # Plot the mean line (important: adjust label if units are different)
-    plt.axvline(mean_value, color=mean_color, linestyle='dashed', linewidth=2, label=f'Mean: {mean_value:.2f}')
+    plt.axvline(mean_value, color=mean_color, linestyle='dashed', linewidth=2, label=f'Mean: {mean_value:.2f} ms')
 
 # Extract the target column
 column = args.gesture
 bin_size = args.bin_size
-
-# Apply filters
-if args.control_mode != 'all':
-    df = df[ df['control_mode'].isin(args.control_mode) ]
-if args.lhg != 'all':
-    df = df[ df['lhg'].isin(args.lhg) ]
-if args.rhg != 'all':
-    df = df[ df['rhg'].isin(args.rhg) ]
     
 data = df[column].dropna()
 mean_value = data.mean()
@@ -88,18 +124,25 @@ print(f"Bins: {bins}")
 plt.figure(figsize=(8, 5))
 
 # Plotting parameters
-hist_colors = ['gold', 'coral', 'teal']
+hist_colors = ['gold', 'coral', 'skyblue']
 line_colors = ['orange', 'red', 'blue']
 edgecolor = '0.25'
 
+plt.grid(True, linestyle='--', alpha=0.7)
+
 # Plot the histogram
-plot_histogram(data, bins, hist_colors[2], mean_value, line_colors[2], edgecolor, threshold=args.threshold)
+plot_histogram(data, bins, hist_colors[2], mean_value, line_colors[2], edgecolor, threshold=0)
 
 # Formatting
 plt.xlabel(f'Elapsed time (ms)', fontsize=12)
 plt.ylabel('Probability', fontsize=12)
 plt.title(args.title, fontsize=14, fontweight='bold')
 plt.legend()
-plt.grid(True, linestyle='--', alpha=0.7)
 plt.tight_layout()
-plt.show()
+plt.savefig(f"{args.title}.jpg",
+            dpi=300,         # High resolution for printing
+            bbox_inches="tight", # Remove extra whitespace
+            transparent=False,  # No transparency (background will be white)
+            facecolor='white') # Ensure the background is white
+
+if not args.skip_plot: plt.show()
