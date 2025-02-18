@@ -3,6 +3,7 @@
 import rospy
 import numpy as np
 from functools import partial
+import time
 
 from gesture_utils.frameworks.action_based_control_mode import ActionBasedControlMode
 
@@ -168,8 +169,10 @@ class CartesianControlMode(ActionBasedControlMode):
         velocity_scaling = self.get_velocity_scaling(kwargs['lhl'], kwargs['rhl'], mapping='exponential', a=0.2, b=0.9, c=0.01, d=1)
         
         # Get the Jacobian of the current configuration
+        jacobian_start_time = time.time()
         current_joint = self.group_commander.get_current_joint_values()
         jacobian = self.group_commander.get_jacobian_matrix(current_joint)
+        jacobian_exec_time = time.time() - jacobian_start_time
         
         # Calculate the maximum velocity for each DoF in the selected frame
         # If in base frame, the orientation matrix is the identity
@@ -237,7 +240,9 @@ class CartesianControlMode(ActionBasedControlMode):
         rospy.logdebug(f"Target pose: {pose_target}")
         
         # Compute inverse kinematics
-        target_joints = self.compute_ik(pose_target)     
+        ik_start_time = time.time()
+        target_joints = self.compute_ik(pose_target)   
+        ik_exec_time = time.time() - ik_start_time  
         if target_joints is None: 
             return partial(self.stop)   
         
@@ -248,8 +253,9 @@ class CartesianControlMode(ActionBasedControlMode):
         ################ SEND ACTION REQUEST ####################        
         
         goal = self.generate_action_goal(target_joints, self.joint_names)
-        action_request = partial(self.client.send_goal, goal=goal)        
-        return action_request
+        action_request = partial(self.client.send_goal, goal=goal)   
+
+        return action_request, ["ik", "jacobian"], [ik_exec_time, jacobian_exec_time]
 
 
 

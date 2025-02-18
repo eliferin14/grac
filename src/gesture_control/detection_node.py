@@ -108,14 +108,17 @@ def main():
         
         # Extract gestures
         rh_gesture, lh_gesture = detector.get_hand_gestures()
+        #rospy.loginfo(f"RHG:{rh_gesture}, LHG:{lh_gesture}")
         #rospy.loginfo(f"FPS: {fps}")
         
         
         ############# GESTURE INTERPRETATION #############
+
+        ts_names, ts_values = [], []
         
         # Call the gesture interpreter
         interpret_start_time = time.time()
-        callback = interpreter.interpret_gestures(
+        interpretation_result = interpreter.interpret_gestures(
             frame=frame,
             fps=fps,
             rhg=rh_gesture,
@@ -130,6 +133,11 @@ def main():
         interpret_exec_time = time.time() - interpret_start_time
         timestamps_names.append('interpret')
         timestamps_times.append(interpret_exec_time)
+
+        if isinstance(interpretation_result, tuple):
+            callback, ts_names, ts_values = interpretation_result
+        else:
+            callback = interpretation_result
         
         # Execute the selected callback        
         result = callback()
@@ -196,10 +204,10 @@ def main():
         timestamps_msg.header = Header()
         timestamps_msg.header.stamp = rospy.Time.now()
         timestamps_msg.control_mode = interpreter.selected_framework_manager.framework_name
-        timestamps_msg.rhg = 'rhg'
-        timestamps_msg.lhg = 'lhg'
-        timestamps_msg.operation_names = timestamps_names
-        timestamps_msg.execution_times = timestamps_times
+        timestamps_msg.rhg = rh_gesture if rh_gesture is not None else 'None'
+        timestamps_msg.lhg = lh_gesture if lh_gesture is not None else 'None'
+        timestamps_msg.operation_names = timestamps_names + ts_names
+        timestamps_msg.execution_times = timestamps_times + ts_values
         timestamps_msg.num_hands = detector.num_hands
         timestamps_publisher.publish(timestamps_msg)  
         

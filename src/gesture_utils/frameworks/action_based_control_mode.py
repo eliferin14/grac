@@ -209,7 +209,7 @@ class ActionBasedControlMode(ControlModeInterface):
 
             scaling = c + (d-c)*(np.exp(hands_distance) - np.exp(a))/(np.exp(b) - np.exp(a))
 
-        assert scaling > 0
+        assert scaling >= 0
             
         return scaling
 

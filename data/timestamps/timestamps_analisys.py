@@ -8,15 +8,19 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--filename', type=str, default="processing_times.csv")
 parser.add_argument('-g', '--gesture', type=str, default="landmarks")
+parser.add_argument('-cm', '--control_mode', nargs='+', type=str, default="all")
+parser.add_argument('-lhg', type=str, nargs='+',  default="all")
+parser.add_argument('-rhg', type=str, nargs='+', default="all")
 parser.add_argument('-b', '--bin_size', type=float, default=0.001)
-parser.add_argument('-n', '--num-hands', type=int, default=-1)
+parser.add_argument('-n', '--num_hands', type=int, default=-1)
 args = parser.parse_args()
+print(args)
 
 # Load the file
 df = pd.read_csv(args.filename)
 
 # Convert seconds to milliseconds
-col_list = ["capture", "landmarks", "gestures", "interpret", "drawing"]
+col_list = ["capture", "landmarks", "gestures", "interpret", "drawing", "ik", "jacobian"]
 df[col_list] = df[col_list] * 1000
 
 # Function to compute bins
@@ -28,6 +32,14 @@ def get_bin_counts(column, bin_range):
 # Extract the target column
 column = args.gesture
 bin_size = args.bin_size
+
+# Apply filters
+if args.control_mode != 'all':
+    df = df[ df['control_mode'].isin(args.control_mode) ]
+if args.lhg != 'all':
+    df = df[ df['lhg'].isin(args.lhg) ]
+if args.rhg != 'all':
+    df = df[ df['rhg'].isin(args.rhg) ]
 
 # Handle different num_hands cases
 if args.num_hands < 0:
@@ -52,11 +64,11 @@ elif args.num_hands in [0, 1, 2]:
 bins = get_bin_counts(data, bin_size)
 
 # Fit distributions (only if not comparing two histograms)
-if args.num_hands != 12 and args.num_hands < 0:
+best_fit = None
+best_sse = float('inf')
+best_params = None
+if args.num_hands < 3:
     dist_names = ['lognorm', 'gamma', 'weibull_min', 'expon']
-    best_fit = None
-    best_sse = float('inf')
-    best_params = None
 
     for dist_name in dist_names:
         dist = getattr(stats, dist_name)

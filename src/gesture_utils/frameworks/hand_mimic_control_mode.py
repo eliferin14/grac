@@ -15,7 +15,7 @@ from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from geometry_msgs.msg import Point
 from gesture_control.msg import trajectories
 
-from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix, quaternion_from_matrix, rotation_from_matrix, quaternion_conjugate
+from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix, quaternion_from_matrix, rotation_from_matrix, quaternion_conjugate, quaternion_inverse
 from scipy.spatial.transform import Rotation as R
 
 
@@ -215,7 +215,7 @@ class HandMimicControlMode( CartesianControlMode ):
     # TODO: Define this matrix properly
     camera_to_robot_R = np.vstack([ [0,0,-1], [-1,0,0], [0,-1,0] ])
     hand_to_camera_R = np.vstack([ [1,0,0], [0,1,0], [0,0,1] ])
-    hand_to_robot_R = np.vstack([ [0,-1,0], [0,0,-1], [1,0,0] ])
+    hand_to_robot_R = np.vstack([ [0,1,0], [0,0,1], [-1,0,0] ])
     
     
     def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=5):
@@ -417,7 +417,7 @@ class HandMimicControlMode( CartesianControlMode ):
         hand_delta_position = filtered_position - self.hand_previous_position
         #hand_delta_position = self.ema_position_filter.update(hand_delta_position, current_time)
         hand_delta_position = self.suppress_noise(hand_delta_position, 1e-3)
-        hand_delta_position = np.zeros(hand_delta_position.shape)
+        #hand_delta_position = np.zeros(hand_delta_position.shape)
         #rospy.loginfo(f"Hand delta position: {hand_delta_position}")
  
         # Apply scaling to obtain the delta vector for the robot
@@ -429,16 +429,17 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
         #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
-        rotation_quaternion = quaternion_multiply(filtered_orientation, quaternion_conjugate(self.hand_previous_orientation))
+        rotation_quaternion = quaternion_multiply(quaternion_inverse(self.hand_previous_orientation), filtered_orientation)
         rotation_vector = R.from_quat(rotation_quaternion).as_rotvec()
         angle = np.linalg.norm(rotation_vector)
         axis = rotation_vector / angle if angle > 0 else np.array([1.0, 0.0, 0.0])
-        scaled_rotation_quaternion = quaternion_about_axis(scaling_factor*angle, axis)# if angle > np.pi / 50 else [0,0,0,1]
+        scaled_angle = angle * 0.3
+        scaled_rotation_quaternion = quaternion_about_axis(scaled_angle, axis)# if angle > np.pi / 50 else [0,0,0,1]
         #axis, angle =
         #rotation_quaternion = self.get_rotation_quaternion(filtered_orientation, self.hand_previous_orientation, scaling_factor)
         #rotation_quaternion = np.array([0,0,0,1])
         #rospy.loginfo(f"Rotation quaternion: {scaled_rotation_quaternion}")
-        rospy.loginfo(f"Axis: {axis}, angle: {angle}, scaled angle: {scaling_factor*angle}")
+        rospy.loginfo(f"Axis: {axis}, angle: {angle}, scaled angle: {scaled_angle}")
 
 
 
