@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 import argparse
 
+# python3 timestamps_analisys.py -f cartesian1.csv -g interpret -b 3 -n 2 -cm "Joint control" -lhg "one" "two" "three" "four" "fist" "palm" -rhg "one" "two"
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--filename', type=str, default="processing_times.csv")
@@ -13,11 +16,13 @@ parser.add_argument('-lhg', type=str, nargs='+',  default="all")
 parser.add_argument('-rhg', type=str, nargs='+', default="all")
 parser.add_argument('-b', '--bin_size', type=float, default=0.001)
 parser.add_argument('-n', '--num_hands', type=int, default=-1)
+parser.add_argument('-t', '--title', type=str, default="Default title")
 args = parser.parse_args()
 print(args)
 
 # Load the file
 df = pd.read_csv(args.filename)
+print(df.head)
 
 # Convert seconds to milliseconds
 col_list = ["capture", "landmarks", "gestures", "interpret", "drawing", "ik", "jacobian"]
@@ -42,7 +47,7 @@ if args.rhg != 'all':
     df = df[ df['rhg'].isin(args.rhg) ]
 
 # Handle different num_hands cases
-if args.num_hands < 0:
+if args.num_hands == 120:    # Separate the data
     data_0 = df[df['hands'] == 0][column].dropna()
     data_1 = df[df['hands'] == 1][column].dropna()
     data_2 = df[df['hands'] == 2][column].dropna()
@@ -59,9 +64,13 @@ elif args.num_hands == 12:
 elif args.num_hands in [0, 1, 2]:
     data = df[df['hands'] == args.num_hands][column].dropna()
     mean_value = data.mean()
+elif args.num_hands < 0:
+    data = df[column]
+    mean_value = data.mean()
 
 # Compute bin counts
 bins = get_bin_counts(data, bin_size)
+print(f"Bins: {bins}")
 
 # Fit distributions (only if not comparing two histograms)
 best_fit = None
@@ -90,20 +99,26 @@ if args.num_hands < 3:
 # Plot
 plt.figure(figsize=(8, 5))
 
+
+# Plotting parameters
+hist_colors = ['gold', 'coral', 'teal']
+line_colors = ['orange', 'red', 'blue']
+edgecolor = '0.25'
+
 if args.num_hands == 12:
     # Plot two histograms
-    plt.hist(data_1, bins=bins, density=True, alpha=0.6, color='teal', edgecolor='0.25', label='Hands = 1')
-    plt.hist(data_2, bins=bins, density=True, alpha=0.6, color='coral', edgecolor='0.25', label='Hands = 2')
+    plt.hist(data_1, bins=bins, density=True, alpha=0.6, color=hist_colors[1], edgecolor='0.25', label='Hands = 1')
+    plt.hist(data_2, bins=bins, density=True, alpha=0.6, color=hist_colors[2], edgecolor='0.25', label='Hands = 2')
 
     # Vertical lines for means
     plt.axvline(mean_value_1, color='blue', linestyle=':', linewidth=3, label=f'Mean (Hands = 1): {mean_value_1:.2f} ms')
     plt.axvline(mean_value_2, color='red', linestyle=':', linewidth=3, label=f'Mean (Hands = 2): {mean_value_2:.2f} ms')
 
-elif args.num_hands == -1:
+elif args.num_hands == 120:
     # Plot three histograms
-    plt.hist(data_0, bins=bins, density=True, alpha=0.6, color='gold', edgecolor='0.25', label='Hands = 0')
-    plt.hist(data_1, bins=bins, density=True, alpha=0.6, color='teal', edgecolor='0.25', label='Hands = 1')
-    plt.hist(data_2, bins=bins, density=True, alpha=0.6, color='coral', edgecolor='0.25', label='Hands = 2')
+    plt.hist(data_0, bins=bins, density=True, alpha=0.6, color=hist_colors[0], edgecolor='0.25', label='Hands = 0')
+    plt.hist(data_1, bins=bins, density=True, alpha=0.6, color=hist_colors[1], edgecolor='0.25', label='Hands = 1')
+    plt.hist(data_2, bins=bins, density=True, alpha=0.6, color=hist_colors[2], edgecolor='0.25', label='Hands = 2')
 
     # Vertical lines for means
     plt.axvline(mean_value_0, color='orange', linestyle=':', linewidth=3, label=f'Mean (Hands = 0): {mean_value_0:.2f} ms')
@@ -112,7 +127,7 @@ elif args.num_hands == -1:
 
 else:
     # Plot single histogram
-    plt.hist(data, bins=bins, density=True, alpha=0.6, color='teal', edgecolor='0.25', label='Histogram')
+    plt.hist(data, bins=bins, density=True, alpha=0.6, color=hist_colors[2], edgecolor='0.25', label='Histogram')
 
     # Plot best-fitting distribution
     dist = getattr(stats, best_fit)
@@ -121,12 +136,12 @@ else:
     plt.plot(x, pdf_fitted, 'r:', linewidth=2, label=f'Best Fit: {best_fit}')
 
     # Vertical line for mean
-    plt.axvline(mean_value, color='blue', linestyle='dashed', linewidth=2, label=f'Mean: {mean_value:.2f} ms')
+    plt.axvline(mean_value, color=line_colors[2], linestyle='dashed', linewidth=2, label=f'Mean: {mean_value:.2f} ms')
 
 # Formatting
-plt.xlabel(f'{column} ranges (ms)', fontsize=12)
+plt.xlabel(f'Elapsed time (ms)', fontsize=12)
 plt.ylabel('Density', fontsize=12)
-plt.title(f'Histogram and Best Fit Distribution for {column}', fontsize=14, fontweight='bold')
+plt.title(args.title, fontsize=14, fontweight='bold')
 plt.legend()
 plt.grid(True, linestyle='--', alpha=0.7)
 plt.tight_layout()
