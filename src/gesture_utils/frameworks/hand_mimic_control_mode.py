@@ -204,7 +204,7 @@ class HandMimicControlMode( CartesianControlMode ):
     scaling_list_length = len(left_gestures_list)
 
     # Initialise filters
-    ema_pose_filter = EMAFilter_3_coord(0.3,0.3,0.3, 0.5, 0.5, 0.5, 0.5)
+    ema_pose_filter = EMAFilter_3_coord(0.3,0.3,0.3, 2,2, 2,2)
     
     ca_filter = ConstantAccelerationKalmanFilter(process_noise=0.01, measurement_noise=100)
     sg_smoother = SavitzkyGolayTrajectorySmoother(window_size=13, poly_order=2)
@@ -215,7 +215,7 @@ class HandMimicControlMode( CartesianControlMode ):
     # TODO: Define this matrix properly
     camera_to_robot_R = np.vstack([ [0,0,-1], [-1,0,0], [0,-1,0] ])
     hand_to_camera_R = np.vstack([ [1,0,0], [0,1,0], [0,0,1] ])
-    #hand_to_robot_R = np.eye(3) #np.vstack([[1,0,0], [0,0,1], [0,1,0]])
+    hand_to_robot_R = np.vstack([ [0,-1,0], [0,0,-1], [1,0,0] ])
     
     
     def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=5):
@@ -282,7 +282,10 @@ class HandMimicControlMode( CartesianControlMode ):
         palm_frame_R_in_hand_frame = self.rotation_matrix_from_points(rhwl[0], rhwl[5], rhwl[13])
         #palm_frame_R_in_hand_frame = rhwl[4] - rhwl[0]
         hand_current_orientation = self.hand_to_camera_R @ self.camera_to_robot_R @ palm_frame_R_in_hand_frame
-        palm_frame_R_in_base_frame = palm_frame_R_in_hand_frame @ self.hand_to_camera_R @ self.camera_to_robot_R
+        #palm_frame_R_in_base_frame = palm_frame_R_in_hand_frame @ self.hand_to_camera_R @ self.camera_to_robot_R
+        palm_frame_R_in_base_frame = palm_frame_R_in_hand_frame @ self.hand_to_robot_R
+        rospy.loginfo(f"Palm R in hand frame: {palm_frame_R_in_hand_frame}")
+        rospy.loginfo(f"Palm R in base frame: {palm_frame_R_in_base_frame}")
         #rospy.loginfo(palm_frame_R_in_base_frame)
 
         homo_matrix = np.eye(4)
@@ -414,6 +417,7 @@ class HandMimicControlMode( CartesianControlMode ):
         hand_delta_position = filtered_position - self.hand_previous_position
         #hand_delta_position = self.ema_position_filter.update(hand_delta_position, current_time)
         hand_delta_position = self.suppress_noise(hand_delta_position, 1e-3)
+        hand_delta_position = np.zeros(hand_delta_position.shape)
         #rospy.loginfo(f"Hand delta position: {hand_delta_position}")
  
         # Apply scaling to obtain the delta vector for the robot
@@ -429,12 +433,12 @@ class HandMimicControlMode( CartesianControlMode ):
         rotation_vector = R.from_quat(rotation_quaternion).as_rotvec()
         angle = np.linalg.norm(rotation_vector)
         axis = rotation_vector / angle if angle > 0 else np.array([1.0, 0.0, 0.0])
-        scaled_rotation_quaternion = quaternion_about_axis(scaling_factor*angle, axis) if angle > np.pi / 50 else [0,0,0,1]
+        scaled_rotation_quaternion = quaternion_about_axis(scaling_factor*angle, axis)# if angle > np.pi / 50 else [0,0,0,1]
         #axis, angle =
         #rotation_quaternion = self.get_rotation_quaternion(filtered_orientation, self.hand_previous_orientation, scaling_factor)
         #rotation_quaternion = np.array([0,0,0,1])
         #rospy.loginfo(f"Rotation quaternion: {scaled_rotation_quaternion}")
-        rospy.loginfo(f"Axis: {axis}, angle: {angle}")
+        rospy.loginfo(f"Axis: {axis}, angle: {angle}, scaled angle: {scaling_factor*angle}")
 
 
 

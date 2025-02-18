@@ -12,7 +12,7 @@ from gesture_utils.frameworks.action_based_control_mode import ActionBasedContro
 
 class JointControlMode(ActionBasedControlMode):
     
-    framework_name = "Joint control (Action)"
+    framework_name = "Joint control"
     
     selected_joint_index = None
     

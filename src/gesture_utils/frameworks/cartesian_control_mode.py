@@ -24,7 +24,7 @@ from tf.transformations import quaternion_multiply, quaternion_about_axis, quate
 
 class CartesianControlMode(ActionBasedControlMode):
     
-    framework_name = "Cartesian control (world)"
+    framework_name = "Cartesian control (base)"
     
     selected_dof_index = None
     
@@ -164,7 +164,7 @@ class CartesianControlMode(ActionBasedControlMode):
         o_final = o_current
         
         # Calculate velocity scaling factor (function of hands distance)
-        velocity_scaling = self.get_velocity_scaling(kwargs['lhl'], kwargs['rhl'])
+        #velocity_scaling = self.get_velocity_scaling(kwargs['lhl'], kwargs['rhl'])
         velocity_scaling = self.get_velocity_scaling(kwargs['lhl'], kwargs['rhl'], mapping='exponential', a=0.2, b=0.9, c=0.01, d=1)
         
         # Get the Jacobian of the current configuration
@@ -181,10 +181,10 @@ class CartesianControlMode(ActionBasedControlMode):
         assert cartesian_velocity_limits.shape == (6,)
         
         # Calculate the maximum step for each DoF in the selected frame
-        delta_p_max = self.max_velocity_scaling * cartesian_velocity_limits * self.time_step
+        delta_p_max = np.abs(self.max_velocity_scaling * cartesian_velocity_limits * self.time_step)
         
         # Isolate the selected DoF and scale the step according to the scaling factor and choose the direction
-        direction = 1 if rhg == 'two' else -1
+        direction = 1 if rhg == 'one' else -1
         delta_p = np.zeros((6))
         delta_p[self.selected_dof_index] = direction * velocity_scaling * delta_p_max[self.selected_dof_index]
         

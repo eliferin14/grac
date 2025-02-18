@@ -195,6 +195,9 @@ def main():
         timestamps_msg = timestamps()
         timestamps_msg.header = Header()
         timestamps_msg.header.stamp = rospy.Time.now()
+        timestamps_msg.control_mode = interpreter.selected_framework_manager.framework_name
+        timestamps_msg.rhg = 'rhg'
+        timestamps_msg.lhg = 'lhg'
         timestamps_msg.operation_names = timestamps_names
         timestamps_msg.execution_times = timestamps_times
         timestamps_msg.num_hands = detector.num_hands
