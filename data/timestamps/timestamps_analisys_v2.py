@@ -25,7 +25,7 @@ print(args)
 
 # Load the file
 df = pd.read_csv(args.filename)
-print(df.head)
+#print(df.head)
 
 # Convert seconds to milliseconds
 col_list = ["capture", "landmarks", "gestures", "interpret", "drawing", "ik", "jacobian"]
@@ -45,29 +45,7 @@ if args.num_hands > 0:
     df = df[ df['hands'] == args.num_hands]
     print(f"Rows after filtering num_hands: {df.shape[0]}")
 
-# Example of removing from multiple columns
-def remove_outliers_iqr_multiple(df, column_names):
-    """Removes outliers from multiple DataFrame columns using the IQR method.
 
-    Args:
-        df (pd.DataFrame): The DataFrame.
-        column_names (list): A list of column names to remove outliers from.
-
-    Returns:
-        pd.DataFrame: A new DataFrame with outliers removed.
-    """
-    filtered_df = df.copy()  # Create a copy to avoid modifying the original
-    for column in column_names:
-        Q1 = filtered_df[column].quantile(0.1)
-        Q3 = filtered_df[column].quantile(0.9)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
-        filtered_df = filtered_df[(filtered_df[column] >= lower_bound) & (filtered_df[column] <= upper_bound)]
-    return filtered_df
-
-df = remove_outliers_iqr_multiple(df, col_list)
-print(f"Rows after removing outliers: {df.shape[0]}")
 
 # Calculate total time
 total = df[col_list].sum(axis=1)
@@ -79,6 +57,40 @@ def get_bin_edges(column, bin_range):
     bin_min = min(column) - (min(column) % bin_range)
     bin_max = max(column) - (max(column) % bin_range) + bin_range * 2
     return np.linspace(bin_min, bin_max, int((bin_max - bin_min) / bin_range) + 1)
+
+def get_bin_edges_fixed_bins(column, num_bins):
+    bin_min = min(column)
+    bin_max = max(column)
+    return np.linspace(bin_min, bin_max, num_bins + 1)
+
+
+def get_bin_edges_constrained_bins(column, allowed_bin_sizes=[0.5, 1, 2, 5]):
+    data_min = min(column)
+    data_max = max(column)
+    data_range = data_max - data_min
+
+    best_bin_size = None
+    best_num_bins = float('inf')  # Initialize with a very large number
+
+    for bin_size in allowed_bin_sizes:
+        num_bins = data_range / bin_size
+        if num_bins >= 10:
+            if abs(num_bins - 10) < abs(best_num_bins - 10):
+                best_bin_size = bin_size
+                best_num_bins = num_bins
+
+    # Handle the case where no bin size results in at least 10 bins
+    if best_bin_size is None:
+        best_bin_size = max(allowed_bin_sizes)  # Choose the largest allowed bin size
+        best_num_bins = data_range / best_bin_size
+        print("Warning: No allowed bin size resulted in at least 10 bins. Using largest allowed bin size.")
+
+
+    bin_min = data_min - (data_min % best_bin_size)  # Round down for consistent behavior
+    bin_max = data_max - (data_max % best_bin_size) + best_bin_size  # Round up to include max
+    num_bins = int((bin_max - bin_min) / best_bin_size)
+
+    return np.linspace(bin_min, bin_max, num_bins + 1)
 
 def plot_histogram(data, bins, color, mean_value, mean_color, edgecolor, threshold=0.0):
     # Create the histogram with density=False to get counts
@@ -112,12 +124,38 @@ def plot_histogram(data, bins, color, mean_value, mean_color, edgecolor, thresho
 # Extract the target column
 column = args.gesture
 bin_size = args.bin_size
+
+# Example of removing from multiple columns
+def remove_outliers_iqr_multiple(df, column_names):
+    """Removes outliers from multiple DataFrame columns using the IQR method.
+
+    Args:
+        df (pd.DataFrame): The DataFrame.
+        column_names (list): A list of column names to remove outliers from.
+
+    Returns:
+        pd.DataFrame: A new DataFrame with outliers removed.
+    """
+    filtered_df = df.copy()  # Create a copy to avoid modifying the original
+    for column in column_names:
+        Q1 = filtered_df[column].quantile(0.1)
+        Q3 = filtered_df[column].quantile(0.9)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        filtered_df = filtered_df[(filtered_df[column] >= lower_bound) & (filtered_df[column] <= upper_bound)]
+    return filtered_df
+
+df = remove_outliers_iqr_multiple(df, [column])
+print(f"Rows after removing outliers: {df.shape[0]}")
     
 data = df[column].dropna()
 mean_value = data.mean()
 
 # Compute bin counts
 bins = get_bin_edges(data, bin_size)
+bins = get_bin_edges_fixed_bins(data, 10)
+bins = get_bin_edges_constrained_bins(data, allowed_bin_sizes=[0.1, 0.2, 0.5, 1, 2, 5])
 print(f"Bins: {bins}")
 
 # Create plot object
@@ -139,7 +177,7 @@ plt.ylabel('Probability', fontsize=12)
 plt.title(args.title, fontsize=14, fontweight='bold')
 plt.legend()
 plt.tight_layout()
-plt.savefig(f"{args.title}.jpg",
+plt.savefig(f"{args.title}.png",
             dpi=300,         # High resolution for printing
             bbox_inches="tight", # Remove extra whitespace
             transparent=False,  # No transparency (background will be white)
