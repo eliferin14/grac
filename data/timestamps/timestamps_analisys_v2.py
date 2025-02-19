@@ -25,7 +25,7 @@ print(args)
 
 # Load the file
 df = pd.read_csv(args.filename)
-print(df.head)
+#print(df.head)
 
 # Convert seconds to milliseconds
 col_list = ["capture", "landmarks", "gestures", "interpret", "drawing", "ik", "jacobian"]
@@ -57,6 +57,40 @@ def get_bin_edges(column, bin_range):
     bin_min = min(column) - (min(column) % bin_range)
     bin_max = max(column) - (max(column) % bin_range) + bin_range * 2
     return np.linspace(bin_min, bin_max, int((bin_max - bin_min) / bin_range) + 1)
+
+def get_bin_edges_fixed_bins(column, num_bins):
+    bin_min = min(column)
+    bin_max = max(column)
+    return np.linspace(bin_min, bin_max, num_bins + 1)
+
+
+def get_bin_edges_constrained_bins(column, allowed_bin_sizes=[0.5, 1, 2, 5]):
+    data_min = min(column)
+    data_max = max(column)
+    data_range = data_max - data_min
+
+    best_bin_size = None
+    best_num_bins = float('inf')  # Initialize with a very large number
+
+    for bin_size in allowed_bin_sizes:
+        num_bins = data_range / bin_size
+        if num_bins >= 10:
+            if abs(num_bins - 10) < abs(best_num_bins - 10):
+                best_bin_size = bin_size
+                best_num_bins = num_bins
+
+    # Handle the case where no bin size results in at least 10 bins
+    if best_bin_size is None:
+        best_bin_size = max(allowed_bin_sizes)  # Choose the largest allowed bin size
+        best_num_bins = data_range / best_bin_size
+        print("Warning: No allowed bin size resulted in at least 10 bins. Using largest allowed bin size.")
+
+
+    bin_min = data_min - (data_min % best_bin_size)  # Round down for consistent behavior
+    bin_max = data_max - (data_max % best_bin_size) + best_bin_size  # Round up to include max
+    num_bins = int((bin_max - bin_min) / best_bin_size)
+
+    return np.linspace(bin_min, bin_max, num_bins + 1)
 
 def plot_histogram(data, bins, color, mean_value, mean_color, edgecolor, threshold=0.0):
     # Create the histogram with density=False to get counts
@@ -120,6 +154,8 @@ mean_value = data.mean()
 
 # Compute bin counts
 bins = get_bin_edges(data, bin_size)
+bins = get_bin_edges_fixed_bins(data, 10)
+bins = get_bin_edges_constrained_bins(data, allowed_bin_sizes=[0.1, 0.2, 0.5, 1, 2, 5])
 print(f"Bins: {bins}")
 
 # Create plot object
