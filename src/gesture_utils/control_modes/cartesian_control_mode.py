@@ -5,7 +5,7 @@ import numpy as np
 from functools import partial
 import time
 
-from gesture_utils.frameworks.action_based_control_mode import ActionBasedControlMode
+from gesture_utils.control_modes.action_based_control_mode import ActionBasedControlMode
 
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from geometry_msgs.msg import Pose

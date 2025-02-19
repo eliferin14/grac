@@ -4,7 +4,7 @@ import rospy
 import numpy as np
 from functools import partial
 
-from gesture_utils.frameworks.action_based_control_mode import ActionBasedControlMode
+from gesture_utils.control_modes.action_based_control_mode import ActionBasedControlMode
 
 
 

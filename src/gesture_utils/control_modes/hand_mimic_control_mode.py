@@ -8,7 +8,7 @@ from filterpy.kalman import KalmanFilter
 from scipy.signal import savgol_filter
 import cv2
 
-from gesture_utils.frameworks.cartesian_control_mode import CartesianControlMode
+from gesture_utils.control_modes.cartesian_control_mode import CartesianControlMode
 
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
@@ -103,43 +103,6 @@ class EMAFilter_3_coord():
         for f in self.filters:
             f.reset()
 
-class ConstantAccelerationKalmanFilter:
-    def __init__(self, process_noise=0.01, measurement_noise=1.0):
-        self.kf = KalmanFilter(dim_x=9, dim_z=3)
-
-        # Measurement function (H) - Only observes position
-        self.kf.H = np.zeros((3, 9))
-        self.kf.H[:, :3] = np.eye(3)
-
-        # Process noise covariance (Q) - models uncertainty in acceleration
-        self.kf.Q = np.eye(9) * process_noise
-
-        # Measurement noise covariance (R) - models sensor noise
-        self.kf.R = np.eye(3) * measurement_noise
-
-        # Initial state estimate
-        self.kf.x = np.zeros((9, 1))  # Start at rest
-
-        # Initial state covariance (P)
-        self.kf.P = np.eye(9) * 1.0
-
-    def update_transition_matrix(self, dt):
-        """ Updates the state transition matrix F based on the given dt """
-        F = np.eye(9)
-        for i in range(3):
-            F[i, i+3] = dt
-            F[i, i+6] = 0.5 * dt**2
-            F[i+3, i+6] = dt
-        self.kf.F = F
-
-    def update(self, measurement, dt):
-        """ Updates the filter with a new 3D position measurement and given dt """
-        self.update_transition_matrix(dt)  # Update transition model
-        
-        self.kf.predict()
-        self.kf.update(np.array(measurement).reshape(3, 1))
-        return self.kf.x[:3].flatten()  # Return estimated position
-
 class SavitzkyGolayTrajectorySmoother:
     def __init__(self, window_size=5, poly_order=2):
         """
@@ -206,7 +169,6 @@ class HandMimicControlMode( CartesianControlMode ):
     # Initialise filters
     ema_pose_filter = EMAFilter_3_coord(0.3,0.3,0.3, 2,2, 2,2)
     
-    ca_filter = ConstantAccelerationKalmanFilter(process_noise=0.01, measurement_noise=100)
     sg_smoother = SavitzkyGolayTrajectorySmoother(window_size=13, poly_order=2)
 
     # Define a scaling factor for the depth coordinate
@@ -521,12 +483,6 @@ class HandMimicControlMode( CartesianControlMode ):
         assert points2D.shape[1] == 2
         assert points3D.shape[0] == points2D.shape[0]
 
-        """ normAB = np.linalg.norm(points3D[0] - points3D[1])
-        normBC = np.linalg.norm(points3D[2] - points3D[1])
-        normAC = np.linalg.norm(points3D[0] - points3D[2])
-
-        rospy.loginfo(f"AB: {normAB:.4f}, BC: {normBC:.4f}, AC: {normAC:.4f}") """
-
         # Get rotation and translation vectors from points
         ret, rvec, tvec, _ = cv2.solvePnPRansac(points3D, points2D, camera_matrix, dist_coeffs)
         #rospy.loginfo(f"Translation vector: {tvec}")
@@ -535,11 +491,7 @@ class HandMimicControlMode( CartesianControlMode ):
             raise ValueError
 
         # Get the position of the wrist base in camera frame
-        R, _ = cv2.Rodrigues(rvec)
         wrist_pos = tvec.reshape((-1)) # + R @ points3D[4].reshape((-1)) 
-        #wrist_oriientation = quaternion_from_matrix(np.eye(3)) # quaternion_from_matrix(R)
-
-        
 
         return wrist_pos.reshape((-1)), rvec, tvec#, wrist_oriientation
     

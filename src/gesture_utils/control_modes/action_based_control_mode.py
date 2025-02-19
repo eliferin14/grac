@@ -4,7 +4,7 @@ import rospy
 import numpy as np
 from functools import partial
 
-from gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from gesture_utils.control_modes.control_mode_interface import ControlModeInterface
 
 #import moveit_commander
 from moveit_commander import MoveGroupCommander, RobotCommander

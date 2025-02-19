@@ -2,7 +2,7 @@ import rospy
 from functools import partial
 import numpy as np
 
-from gesture_utils.frameworks.control_mode_interface import ControlModeInterface
+from gesture_utils.control_modes.control_mode_interface import ControlModeInterface
 
 
     
@@ -58,9 +58,4 @@ class MenuFrameworkManager(ControlModeInterface):
         # "Reverse" the index: 0 is on the left
         index = fw_number - s
         
-        # Prepare parameter list for the drawing function
-        draw_kwargs = {
-            'index':index
-        }
-        
-        return index, rh_confirmation,  partial(super().empty_callback)
+        return index, rh_confirmation,  partial(self.empty_callback)
