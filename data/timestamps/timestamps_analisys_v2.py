@@ -45,29 +45,7 @@ if args.num_hands > 0:
     df = df[ df['hands'] == args.num_hands]
     print(f"Rows after filtering num_hands: {df.shape[0]}")
 
-# Example of removing from multiple columns
-def remove_outliers_iqr_multiple(df, column_names):
-    """Removes outliers from multiple DataFrame columns using the IQR method.
 
-    Args:
-        df (pd.DataFrame): The DataFrame.
-        column_names (list): A list of column names to remove outliers from.
-
-    Returns:
-        pd.DataFrame: A new DataFrame with outliers removed.
-    """
-    filtered_df = df.copy()  # Create a copy to avoid modifying the original
-    for column in column_names:
-        Q1 = filtered_df[column].quantile(0.1)
-        Q3 = filtered_df[column].quantile(0.9)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
-        filtered_df = filtered_df[(filtered_df[column] >= lower_bound) & (filtered_df[column] <= upper_bound)]
-    return filtered_df
-
-df = remove_outliers_iqr_multiple(df, col_list)
-print(f"Rows after removing outliers: {df.shape[0]}")
 
 # Calculate total time
 total = df[col_list].sum(axis=1)
@@ -112,6 +90,30 @@ def plot_histogram(data, bins, color, mean_value, mean_color, edgecolor, thresho
 # Extract the target column
 column = args.gesture
 bin_size = args.bin_size
+
+# Example of removing from multiple columns
+def remove_outliers_iqr_multiple(df, column_names):
+    """Removes outliers from multiple DataFrame columns using the IQR method.
+
+    Args:
+        df (pd.DataFrame): The DataFrame.
+        column_names (list): A list of column names to remove outliers from.
+
+    Returns:
+        pd.DataFrame: A new DataFrame with outliers removed.
+    """
+    filtered_df = df.copy()  # Create a copy to avoid modifying the original
+    for column in column_names:
+        Q1 = filtered_df[column].quantile(0.1)
+        Q3 = filtered_df[column].quantile(0.9)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        filtered_df = filtered_df[(filtered_df[column] >= lower_bound) & (filtered_df[column] <= upper_bound)]
+    return filtered_df
+
+df = remove_outliers_iqr_multiple(df, [column])
+print(f"Rows after removing outliers: {df.shape[0]}")
     
 data = df[column].dropna()
 mean_value = data.mean()
@@ -139,7 +141,7 @@ plt.ylabel('Probability', fontsize=12)
 plt.title(args.title, fontsize=14, fontweight='bold')
 plt.legend()
 plt.tight_layout()
-plt.savefig(f"{args.title}.jpg",
+plt.savefig(f"{args.title}.png",
             dpi=300,         # High resolution for printing
             bbox_inches="tight", # Remove extra whitespace
             transparent=False,  # No transparency (background will be white)

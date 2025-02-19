@@ -280,43 +280,31 @@ class HandMimicControlMode( CartesianControlMode ):
 
         # Get hand orientation
         palm_frame_R_in_hand_frame = self.rotation_matrix_from_points(rhwl[0], rhwl[5], rhwl[13])
-        #palm_frame_R_in_hand_frame = rhwl[4] - rhwl[0]
-        hand_current_orientation = self.hand_to_camera_R @ self.camera_to_robot_R @ palm_frame_R_in_hand_frame
-        #palm_frame_R_in_base_frame = palm_frame_R_in_hand_frame @ self.hand_to_camera_R @ self.camera_to_robot_R
         palm_frame_R_in_base_frame = palm_frame_R_in_hand_frame @ self.hand_to_robot_R
         rospy.loginfo(f"Palm R in hand frame: {palm_frame_R_in_hand_frame}")
         rospy.loginfo(f"Palm R in base frame: {palm_frame_R_in_base_frame}")
         #rospy.loginfo(palm_frame_R_in_base_frame)
-
-        homo_matrix = np.eye(4)
-        homo_matrix[:3,:3] = palm_frame_R_in_base_frame
-        hand_current_orientation = quaternion_from_matrix(homo_matrix)
-        #rospy.loginfo(f"Current quaternion: {hand_current_orientation}")
+        hand_current_orientation = [0,0,0,1]
 
 
 
-        # Define a reference frame
+
+        """ # Define a reference frame
         axis_length = 0.05
         rf_points = np.float32([palm_frame_R_in_hand_frame[:,0], palm_frame_R_in_hand_frame[:,1], palm_frame_R_in_hand_frame[:,2], [0,0,0]]).reshape(-1, 3) * axis_length
-
-        """ # Define which point is the reference point for the hand
-        ref_index = -1
-        if ref_index >= 0:
-            wrist_pos += R @ points3D[ref_index].reshape((-1))
-            rf_points += points3D[ref_index] """
         
         imgpts, _ = cv2.projectPoints(rf_points, rvec, tvec, camera_matrix, dist_coeffs)
         origin = tuple(imgpts[3].ravel().astype(int))
         #rospy.loginfo(f"Origin: {origin}")
         imgpts = imgpts.astype(int)
 
-        # Draw reference frame on undistorted image
+        # Draw reference frame
         frame = cv2.circle(frame, origin, radius=1, color=(0,255,255))
         frame = cv2.circle(frame, origin, radius=10, color=(0,255,255))
         frame = cv2.circle(frame, origin, radius=50, color=(0,255,255))
         frame = cv2.line(frame, origin, tuple(imgpts[0].ravel()), (0, 0, 255), 3)  # X-axis (red)
         frame = cv2.line(frame, origin, tuple(imgpts[1].ravel()), (0, 255, 0), 3)  # Y-axis (green)
-        frame = cv2.line(frame, origin, tuple(imgpts[2].ravel()), (255, 0, 0), 3)  # Z-axis (blue)
+        frame = cv2.line(frame, origin, tuple(imgpts[2].ravel()), (255, 0, 0), 3)  # Z-axis (blue) """
 
 
     
@@ -384,20 +372,11 @@ class HandMimicControlMode( CartesianControlMode ):
 
         ################## FILTERS ##################################
         
-        # Apply filtering to the hand position
+        # Apply filtering to the hand position and orientation
         filtered_pose = self.ema_pose_filter.update(np.hstack([hand_current_position, hand_current_orientation]), current_time)
-
 
         filtered_position = filtered_pose[:3]
         filtered_orientation = filtered_pose[3:7]
-        #filtered_position = self.ca_filter.update(hand_current_position, current_time)
-        #filtered_position = hand_current_position
-        #rospy.loginfo(f"{filtered_position[0]:.3f}\t{filtered_position[1]:.3f}\t{filtered_position[2]:.3f}")
-
-        # Apply filtering to orientation
-        #filtered_orientation = self.ema_orientation_filter.update(hand_current_orientation, current_time)
-        #filtered_orientation = hand_current_orientation
-        #rospy.loginfo(f"Hand orientation: {hand_current_orientation}")
 
 
 
@@ -427,30 +406,12 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
 
-
-        #rospy.loginfo(f"Robot delta position: {robot_delta_position}")
-        rotation_quaternion = quaternion_multiply(quaternion_inverse(self.hand_previous_orientation), filtered_orientation)
-        rotation_vector = R.from_quat(rotation_quaternion).as_rotvec()
-        angle = np.linalg.norm(rotation_vector)
-        axis = rotation_vector / angle if angle > 0 else np.array([1.0, 0.0, 0.0])
-        scaled_angle = angle * 0.3
-        scaled_rotation_quaternion = quaternion_about_axis(scaled_angle, axis)# if angle > np.pi / 50 else [0,0,0,1]
-        #axis, angle =
-        #rotation_quaternion = self.get_rotation_quaternion(filtered_orientation, self.hand_previous_orientation, scaling_factor)
-        #rotation_quaternion = np.array([0,0,0,1])
-        #rospy.loginfo(f"Rotation quaternion: {scaled_rotation_quaternion}")
-        rospy.loginfo(f"Axis: {axis}, angle: {angle}, scaled angle: {scaled_angle}")
-
-
-
-
-
         
         # Calculate the target pose for the robot (starting pose + scaled delta vector)
         robot_target_position_raw = robot_position + robot_delta_position
         robot_target_position = self.sg_smoother.update(robot_target_position_raw)
 
-        robot_target_orientation = quaternion_multiply( scaled_rotation_quaternion, robot_orientation )
+        robot_target_orientation = robot_orientation
 
         robot_target_pose = self.convert_p_q_to_pose(robot_target_position, robot_target_orientation)
         rospy.logdebug(robot_target_pose)
