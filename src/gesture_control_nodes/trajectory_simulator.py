@@ -7,6 +7,7 @@ import argparse
 import roslib
 import os
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 from gesture_utils.control_modes.hand_mimic_control_mode import HandMimicControlMode
 
@@ -73,17 +74,23 @@ def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors
 
 
 
-
-rospy.init_node('trajectory_simulator', anonymous=True)
-
-hmcm = HandMimicControlMode()
-
 parser = argparse.ArgumentParser()
-parser.add_argument('-it', '--input-trajectory', type=str, default='test_input.npz')
-parser.add_argument('-ot', '--output-trajectory', type=str, default='test_output.npz')
+parser.add_argument('-it', '--input-trajectory', type=str, default='test_input')
+#parser.add_argument('-ot', '--output-trajectory', type=str, default='test_output.npz')
+parser.add_argument('-l', '--live', action="store_true")
 
 args = parser.parse_args()
 rospy.loginfo(args)
+
+
+rospy.init_node('trajectory_simulator', anonymous=True)
+
+if args.live:
+    rospy.set_param('/detection_node/live', True)
+else:
+    rospy.set_param('/detection_node/live', False)
+
+hmcm = HandMimicControlMode()
 
 
 # Find the absolute path
@@ -91,8 +98,9 @@ data_realtive_path = "data/trajectories"
 package_path = roslib.packages.get_pkg_dir('gesture_control')
 data_absolute_path = os.path.join(package_path, data_realtive_path)
 
-input_filename = os.path.join(data_absolute_path, args.input_trajectory)
-output_filename = os.path.join(data_absolute_path, args.output_trajectory)
+suffix = "_live.npz" if args.live else "_sim.npz" 
+input_filename = os.path.join(data_absolute_path, args.input_trajectory+".npz")
+output_filename = os.path.join(data_absolute_path, args.input_trajectory+suffix)
 rospy.loginfo(f"Input trajectory file: {input_filename}")
 rospy.loginfo(f"Output trajectory file: {output_filename}")
 
@@ -180,7 +188,7 @@ plot_trajectories_with_bounding_cube(ax_robot,
                                      trajectories=[robot_raw_trajectory, robot_measured_trajectory],
                                      title="Robot position",
                                      labels=['Raw', 'Measured'],
-                                     colors=['k', 'lightblue'],
+                                     colors=['k', 'b'],
                                      markers=['x', '']
                                      )
 
@@ -190,7 +198,7 @@ plot_trajectories_with_bounding_cube(ax_robot,
 plt.tight_layout()
 plt.show()
 
-np.savez(output_filename, output_trajectory_tensor)
+np.savez(output_filename, trajectory_tensor=output_trajectory_tensor)
 
 
 

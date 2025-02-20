@@ -203,6 +203,8 @@ class HandMimicControlMode( CartesianControlMode ):
         self.robot_smooth_pub = rospy.Publisher('robot_smoothed_target_position', Point, queue_size=10)
 
         self.trajectories_publisher = rospy.Publisher('hand_mimic_trajectories', trajectories, queue_size=10)
+
+        self.time_step = 0.05
         
         
         

@@ -11,7 +11,7 @@ import argparse
 import tf
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-f', '--filename', type=str, default="trajectories.npy")
+parser.add_argument('-f', '--filename', type=str, default="trajectories")
 args = parser.parse_args()
 print(args)
 
@@ -21,7 +21,7 @@ rospy.init_node('trajectory_listener', anonymous=True)
 data_realtive_path = "data/trajectories"
 package_path = roslib.packages.get_pkg_dir('gesture_control')
 data_absolute_path = os.path.join(package_path, data_realtive_path)
-file_absolute_path = os.path.join(data_absolute_path, args.filename)
+file_absolute_path = os.path.join(data_absolute_path, args.filename+".npz")
 
 # Create the tensor
 num_trajectories = 7
