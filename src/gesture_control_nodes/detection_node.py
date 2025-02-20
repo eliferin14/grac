@@ -18,7 +18,7 @@ from gesture_utils.gesture_detector import GestureDetector
 from gesture_utils.ros_utils import convert_matrix_to_ROSpoints
 from gesture_utils.fps_counter import FPS_Counter
 from gesture_utils.drawing_utils import draw_on_frame
-from gesture_utils.framework_selector import GestureInterpreter
+from gesture_utils.control_mode_selector import GestureInterpreter
 
 # Find the model directory absolute path
 model_realtive_path = "src/gesture_utils/training/exported_model"

@@ -18,7 +18,7 @@ print(args)
 rospy.init_node('trajectory_listener', anonymous=True)
 
 # Find the model directory absolute path
-data_realtive_path = "data"
+data_realtive_path = "data/trajectories"
 package_path = roslib.packages.get_pkg_dir('gesture_control')
 data_absolute_path = os.path.join(package_path, data_realtive_path)
 file_absolute_path = os.path.join(data_absolute_path, args.filename)
@@ -26,6 +26,7 @@ file_absolute_path = os.path.join(data_absolute_path, args.filename)
 # Create the tensor
 num_trajectories = 7
 trajectories_tensor = np.zeros((1,num_trajectories,3))    # Time, trajectory, coordinate
+timestamps = np.zeros((1,1))
 
 # Initialize the commander
 group_commander = MoveGroupCommander("manipulator")
@@ -35,7 +36,7 @@ tf_listener = tf.TransformListener()
 
 def callback(msg):
 
-    global trajectories_tensor
+    global trajectories_tensor, timestamps
 
     # Create the numpy matrix
     trajectories_matrix = np.zeros((num_trajectories,3))
@@ -59,6 +60,7 @@ def callback(msg):
 
     # Save the matrix into the tensor
     trajectories_tensor = np.append(trajectories_tensor, [trajectories_matrix], axis=0)
+    timestamps = np.append(timestamps, msg.header.stamp)
 
     #rospy.loginfo(f"Matrix dimension: {trajectories_matrix.shape}; Tensor dimensions: {trajectories_tensor.shape}")
 
@@ -67,13 +69,14 @@ def callback(msg):
 
 def shutdown_hook():
     # Remove the first row
-    global trajectories_tensor
+    global trajectories_tensor, timestamps
     trajectories_tensor = trajectories_tensor[1:]
+    timestamps = timestamps[1:]
 
     # Save the file
     rospy.loginfo(f"Recorded {trajectories_tensor.shape[0]} points per trajectory")
     rospy.loginfo(f"Saving trajectories to {file_absolute_path}...")
-    np.save(file_absolute_path, trajectories_tensor)
+    np.savez(file_absolute_path, timestamps=timestamps, trajectories_tensor=trajectories_tensor)
 
 
 

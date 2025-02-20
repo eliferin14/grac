@@ -2,13 +2,13 @@ import rospy
 import numpy as np
 from functools import partial
 
-from gesture_utils.frameworks.control_mode_interface import ControlModeInterface
-from gesture_utils.frameworks.joint_control_mode import JointControlMode
-from gesture_utils.frameworks.cartesian_control_mode import CartesianControlMode
-from gesture_utils.frameworks.hand_mimic_control_mode import HandMimicControlMode
-from gesture_utils.frameworks.control_mode_selector import MenuFrameworkManager
+from gesture_utils.control_modes.control_mode_interface import ControlModeInterface
+from gesture_utils.control_modes.joint_control_mode import JointControlMode
+from gesture_utils.control_modes.cartesian_control_mode import CartesianControlMode
+from gesture_utils.control_modes.hand_mimic_control_mode import HandMimicControlMode
+from gesture_utils.control_modes.control_mode_selector import MenuFrameworkManager
 from gesture_utils.visual_menu import MenuHandler
-from gesture_utils.frameworks.gripper_control_mode import GripperControlMode
+from gesture_utils.control_modes.gripper_control_mode import GripperControlMode
 
 
 

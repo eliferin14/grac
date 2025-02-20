@@ -9,7 +9,8 @@ parser.add_argument('-f', '--filename', type=str, default="trajectories.npy")
 args = parser.parse_args()
 print(args)
 
-trajectories_tensor = np.load(args.filename)
+loaded_data = np.load(args.filename)
+trajectories_tensor = loaded_data['trajectories_tensor']
 print(f"Loaded tensor with shape {trajectories_tensor.shape}")
 
 # Define the parameter t
@@ -48,7 +49,7 @@ def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors
 
         if draw_arrows:
             u, v, w = np.diff(x), np.diff(y), np.diff(z)
-            ax.quiver(x[:-1], y[:-1], z[:-1], u, v, w, color=color, arrow_length_ratio=0.5)
+            #ax.quiver(x[:-1], y[:-1], z[:-1], u, v, w, color=color, arrow_length_ratio=0.5)
 
     # Compute the bounding cube
     all_points = np.vstack(trajectories)  # Flatten all trajectories into a single array

@@ -12,6 +12,7 @@ from gesture_utils.control_modes.cartesian_control_mode import CartesianControlM
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
 from geometry_msgs.msg import Point
+from std_msgs.msg import Header 
 from gesture_control.msg import trajectories
 
 from tf.transformations import quaternion_multiply, quaternion_about_axis, quaternion_matrix, quaternion_from_matrix, rotation_from_matrix, quaternion_conjugate, quaternion_inverse
@@ -353,7 +354,6 @@ class HandMimicControlMode( CartesianControlMode ):
         # Calculate the delta vector between the current and starting position of the right hand
         rospy.logdebug(f"Hand starting position: {self.hand_previous_position}")
         #rospy.logdebug(f"Hand current position: {filtered_position}")
-        #hand_delta_position = filtered_position - self.hand_previous_position
         hand_delta_position = filtered_position - self.hand_previous_position
         #hand_delta_position = self.ema_position_filter.update(hand_delta_position, current_time)
         hand_delta_position = self.suppress_noise(hand_delta_position, 1e-3)
@@ -385,19 +385,25 @@ class HandMimicControlMode( CartesianControlMode ):
         # Create Point objects
         hand_raw_point = Point(x=hand_current_position[0], y=hand_current_position[1], z=hand_current_position[2])
         hand_filtered_point = Point(x=filtered_position[0], y=filtered_position[1], z=filtered_position[2])
-        hand_delta_point = Point(x=hand_delta_position[0], y=hand_delta_position[1], z=hand_delta_position[2])
-        robot_delta_point = Point(x=robot_delta_position[0], y=robot_delta_position[1], z=robot_delta_position[2])
         robot_raw_target_point = Point(x=robot_target_position_raw[0], y=robot_target_position_raw[1], z=robot_target_position_raw[2])
         robot_smoothed_target_point = Point(x=robot_target_position[0], y=robot_target_position[1], z=robot_target_position[2])
+        robot_measured_point = Point(x=robot_position[0], y=robot_position[1], z=robot_position[2])
+        hand_delta_point = Point(x=hand_delta_position[0], y=hand_delta_position[1], z=hand_delta_position[2])
+        robot_delta_point = Point(x=robot_delta_position[0], y=robot_delta_position[1], z=robot_delta_position[2])
 
         # Publish the trajectories
         trajectories_msg = trajectories()
+        trajectories_msg.header = Header()
+        trajectories_msg.header.stamp = rospy.Time.now()
         trajectories_msg.points.append(hand_raw_point)
         trajectories_msg.points.append(hand_filtered_point)
         trajectories_msg.points.append(robot_raw_target_point)
         trajectories_msg.points.append(robot_smoothed_target_point)
         trajectories_msg.points.append(hand_delta_point)
         trajectories_msg.points.append(robot_delta_point)
+        
+        # Always last
+        trajectories_msg.points.append(robot_measured_point)
 
         self.trajectories_publisher.publish(trajectories_msg)
 
@@ -407,7 +413,7 @@ class HandMimicControlMode( CartesianControlMode ):
         # Substitute the previous position with the current one for the next iteration
         self.hand_previous_position = filtered_position  
         self.hand_previous_orientation = filtered_orientation    
-        self.robot_previous_position = robot_position #NOTE This could be changed to the current robot position instead of the previous target
+        self.robot_previous_position = robot_position 
 
 
 
@@ -423,6 +429,9 @@ class HandMimicControlMode( CartesianControlMode ):
         # Send the goal to the action server
         action_request = partial(self.client.send_goal, goal=goal)        
         return action_request
+    
+    
+        
 
 
 
