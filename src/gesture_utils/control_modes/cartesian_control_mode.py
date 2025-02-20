@@ -147,8 +147,6 @@ class CartesianControlMode(ActionBasedControlMode):
         # Get current pose
         current_pose = self.group_commander.get_current_pose().pose
         pose_target = current_pose
-        current_position = current_pose.position
-        current_orientation = current_pose.orientation
         rospy.logdebug(f"Current pose: {current_pose}")
         
         # Get position vector and quaternion from the current pose

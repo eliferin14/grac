@@ -48,7 +48,8 @@ if args.num_hands > 0:
 
 
 # Calculate total time
-total = df[col_list].sum(axis=1)
+total_col_list = ["capture", "landmarks", "gestures", "interpret", "drawing"]
+total = df[total_col_list].sum(axis=1)
 df['total'] = total
 #print(df['total'].shape)
 
@@ -159,7 +160,7 @@ bins = get_bin_edges_constrained_bins(data, allowed_bin_sizes=[0.1, 0.2, 0.5, 1,
 print(f"Bins: {bins}")
 
 # Create plot object
-plt.figure(figsize=(8, 5))
+plt.figure(figsize=(5,3))
 
 # Plotting parameters
 hist_colors = ['gold', 'coral', 'skyblue']

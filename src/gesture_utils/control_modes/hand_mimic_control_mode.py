@@ -4,7 +4,6 @@ import rospy
 import numpy as np
 from functools import partial
 import time
-from filterpy.kalman import KalmanFilter
 from scipy.signal import savgol_filter
 import cv2
 
@@ -516,10 +515,17 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
 
-
 if __name__ == "__main__":
     
     rospy.init_node("Hand_mimic", log_level=rospy.DEBUG)
+    
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--filename', type=str, default='test.npy')
+    
+    args = parser.parse_args()
+    rospy.loginfo(args)
+    
     
     hmfm = HandMimicControlMode()
     
