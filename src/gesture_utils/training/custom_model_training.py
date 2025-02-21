@@ -56,7 +56,7 @@ data = gesture_recognizer.Dataset.from_folder(
 train_data, rest_data = data.split(0.8)
 validation_data, test_data = rest_data.split(0.5)
 
-hparams = gesture_recognizer.HParams(export_dir="exported_model", epochs=30)
+hparams = gesture_recognizer.HParams(export_dir="exported_model", epochs=30, batch_size=32, learning_rate=0.003)
 options = gesture_recognizer.GestureRecognizerOptions(hparams=hparams)
 model = gesture_recognizer.GestureRecognizer.create(
     train_data=train_data,
@@ -68,4 +68,5 @@ loss, acc = model.evaluate(test_data, batch_size=1)
 print(f"Test loss:{loss}, Test accuracy:{acc}")
 
 model.export_model('custom_gesture_recognizer.task')
+model.export_tflite(export_dir='exported_model', tflite_filename='custom_gesture_recognizer.tflite')
 model.export_labels('exported_model')

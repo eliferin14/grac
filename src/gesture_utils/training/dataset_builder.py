@@ -11,28 +11,12 @@ import argparse
 import cv2
 import numpy as np
 
-def rotate_image(img, angle):
-    """Rotates an image by a given angle.
-
-    Args:
-        img: The input image as a NumPy array.
-        angle: The rotation angle in degrees.
-
-    Returns:
-        The rotated image.
-    """
-
-    height, width = img.shape[:2]
-    rotation_matrix = cv2.getRotationMatrix2D((width/2, height/2), angle, 1)
-    rotated_image = cv2.warpAffine(img, rotation_matrix, (width, height))
-    return rotated_image   
-
 parser = argparse.ArgumentParser(description="Hello")
-parser.add_argument("-fdp", "--full_dataset_path", type=str, default='dataset', help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
-parser.add_argument("-mdp", "--my_dataset_path", type=str, default='dataset', help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+parser.add_argument("-fdp", "--full_dataset_path", type=str, default='dataset', help="Path of the full HaGRID datasset")
+parser.add_argument("-mdp", "--my_dataset_path", type=str, default='dataset', help="Path of the dataset with custom pictures")
 parser.add_argument("-fmr", "--full_my_ratio", type=float, default=0.5, help="Fraction of the dataset coming from my dataset")
 parser.add_argument("--reduce_dataset", action='store_true', help="If True a new dataset is built")
-parser.add_argument("-rdp", "--reduced_dataset_path", type=str, default='dataset', help="ID of camera device. Run v4l2-ctl --list-devices to get more info")
+parser.add_argument("-rdp", "--reduced_dataset_path", type=str, default='dataset', help="Path of the output dataset")
 parser.add_argument('--gesture_whitelist', nargs='+', default=['none'], help='Whitelist of gestures. \'none\' is included by default')
 parser.add_argument('-mspg', '--max_samples_per_gesture', type=int, default=200, help='Max number of samples per image')
 parser.add_argument("--merge_palm_stop", action='store_true', help="If True palm and stop are considered both palm")
@@ -50,17 +34,147 @@ rdp = args.reduced_dataset_path
 whitelist = args.gesture_whitelist + ['none']
 
 # Calculate how many pictures to take from the full dataset and my dataset
-num_fd = int( args.max_samples_per_gesture * args.full_my_ratio )
-num_md = args.max_samples_per_gesture - num_fd
-print(f"#images from full dataset: {num_fd}; #images from my dataset: {num_md}")
+target_num_fd = int( args.max_samples_per_gesture * args.full_my_ratio )
+target_num_md = args.max_samples_per_gesture - target_num_fd
+print(f"#images from full dataset: {target_num_fd}; #images from my dataset: {target_num_md}")
 
 # Delete the old dataset and model
 try:
     if args.reduce_dataset:
         shutil.rmtree(rdp)
         print(f"Folder '{rdp}' and its contents deleted successfully.")
+        
 except OSError as e:
     print(f"Error: {e.strerror}")
+
+
+
+
+# Create the folder structure for the final dataset
+for gesture in whitelist:
+    rdp_gesture_path = os.path.join(rdp, gesture)
+    if not os.path.exists(rdp_gesture_path):
+        os.makedirs(rdp_gesture_path)
+
+# Create the simplified full dataset -> all the gestures that are not in the whitelist are put into the 'none' class
+sfdp = os.path.join(fdp, 'simplified_full_dataset')
+os.makedirs(sfdp, exist_ok=True)
+
+# Remove the simplified datasets
+shutil.rmtree(sfdp)
+print(f"Folder '{sfdp}' and its contents deleted successfully.")
+
+for gesture in whitelist:
+    sfdp_gesture_path = os.path.join(sfdp, gesture)
+    if not os.path.exists(sfdp_gesture_path):
+        os.makedirs(sfdp_gesture_path)
+
+# Scan the dataset and collapse it into the simplified dataset
+for folder in os.listdir(fdp):
+    # Check if the folder exists in the simplified dataset
+    if folder == 'simplified_full_dataset':
+        continue
+    if folder in os.listdir(sfdp):
+        target_folder = os.path.join(sfdp, folder)
+    elif args.merge_palm_stop and (folder == 'stop' or folder == 'stop_inverted'):
+        target_folder = os.path.join(sfdp, 'palm')
+    elif args.merge_two_twoup and (folder == 'two_up' or folder == 'two_up_inverted') and 'two' in whitelist: 
+        target_folder = os.path.join(sfdp, 'two')
+    else:
+        target_folder = os.path.join(sfdp, 'none')
+
+    # Copy the images
+    source_folder = os.path.join(fdp, folder)
+    print(f"Copying images from {source_folder} to {target_folder} ...", end='')
+    shutil.copytree(source_folder, target_folder, dirs_exist_ok=True)
+    print("Done")
+
+
+
+
+
+
+# Create the simplified my dataset -> all the gestures that are not in the whitelist are put into the 'none' class
+smdp = os.path.join(mdp, 'simplified_my_dataset')
+
+shutil.rmtree(smdp)
+print(f"Folder '{smdp}' and its contents deleted successfully.")
+
+for gesture in whitelist:
+    smdp_gesture_path = os.path.join(smdp, gesture)
+    if not os.path.exists(smdp_gesture_path):
+        os.makedirs(smdp_gesture_path)
+
+# Scan the dataset and collapse it into the simplified dataset
+for folder in os.listdir(mdp):
+    # Check if the folder exists in the simplified dataset
+    if folder == 'simplified_my_dataset':
+        continue
+    if folder in os.listdir(smdp):
+        target_folder = os.path.join(smdp, folder)
+    else:
+        target_folder = os.path.join(smdp, 'none')
+
+    # Copy the images
+    source_folder = os.path.join(mdp, folder)
+    print(f"Copying images from {source_folder} to {target_folder} ...", end='')
+    shutil.copytree(source_folder, target_folder, dirs_exist_ok=True)
+    print("Done")
+
+
+
+# Merge the two datasets into the final one
+for gesture in whitelist:
+    sfdp_source_folder = os.path.join(sfdp, gesture)
+    smdp_source_folder = os.path.join(smdp, gesture)
+    rdp_target_folder = os.path.join(rdp, gesture)
+    assert os.path.exists(sfdp_source_folder) and os.path.exists(smdp_source_folder) and os.path.exists(rdp_target_folder)
+
+    sfdp_files = os.listdir(sfdp_source_folder)
+    smdp_files = os.listdir(smdp_source_folder)
+
+    sfdp_image_count = len(sfdp_files)
+    smdp_image_count = len(smdp_files)
+    print(f"\'{gesture}\' images found in Full dataset: {sfdp_image_count}; in My dataset: {smdp_image_count}")
+
+    # Decide how many images to take from full set (a) and my set (b)
+    if sfdp_image_count >= target_num_fd and smdp_image_count >= target_num_md:
+        a = target_num_fd
+        b = target_num_md
+    elif sfdp_image_count >= target_num_fd and smdp_image_count < target_num_md:
+        b = smdp_image_count
+        a = min( sfdp_image_count, args.max_samples_per_gesture - b)
+    elif sfdp_image_count < target_num_fd and smdp_image_count >= target_num_md:
+        a = sfdp_image_count
+        b = min( smdp_image_count, args.max_samples_per_gesture - a)
+    else:
+        a = sfdp_image_count
+        b = smdp_image_count
+    print(f"A: {a}, B: {b} -> total images: {a+b}")
+
+    # Shuffle to randomize the order
+    random.shuffle(sfdp_files)
+    random.shuffle(smdp_files)
+
+    # Copy files from full dataset
+    for i in range(a):
+        src = os.path.join(sfdp_source_folder, sfdp_files[i])
+        dst = os.path.join(rdp_target_folder, sfdp_files[i])
+        print(f"{src}->{dst}")
+        shutil.copy(src, dst)
+
+    # Copy files from my dataset
+    for i in range(b):
+        src = os.path.join(smdp_source_folder, smdp_files[i])
+        dst = os.path.join(rdp_target_folder, smdp_files[i])
+        print(f"{src}->{dst}")
+        shutil.copy(src, dst)
+
+
+
+
+
+exit()
 
 # Scan the full dataset, and copy the whitelisted gestures in their folder, and the blacklisted gestures in the none folder
 if args.reduce_dataset:                
@@ -95,7 +209,7 @@ if args.reduce_dataset:
 
             # Load all filenames and shuffle
             image_files = os.listdir(mdp_gesture_path)
-            num_images = min(num_md, len(image_files)) if folder in os.listdir(rdp) else args.max_samples_per_gesture
+            num_images = min(target_num_md, len(image_files)) if folder in os.listdir(rdp) else args.max_samples_per_gesture
             random.shuffle(image_files)
 
             # Copy the desired number of files
@@ -129,7 +243,7 @@ if args.reduce_dataset:
         if folder not in os.listdir(rdp):
             temp_num_fd = args.max_samples_per_gesture    
         else:        
-            temp_num_fd = num_fd
+            temp_num_fd = target_num_fd
             
         if os.path.isdir(fdp_gesture_path):
             
