@@ -179,6 +179,9 @@ class HandMimicControlMode( CartesianControlMode ):
     hand_to_camera_R = np.vstack([ [1,0,0], [0,1,0], [0,0,1] ])
     hand_to_robot_R = np.vstack([ [0,1,0], [0,0,1], [-1,0,0] ])
     
+    # List that stores the recorded points of the trajectory
+    hand_trajectory_2D = []
+    
     
     def __init__(self, group_name="manipulator", min_scaling=0.5, max_scaling=5):
         
@@ -238,7 +241,7 @@ class HandMimicControlMode( CartesianControlMode ):
         points2D = rhl[:,:2][pointf_for_pnp_indexes]
         points2D[:,0] *= frame.shape[1]
         points2D[:,1] *= frame.shape[0]
-        hand_current_position_camera_frame, rvec, tvec = self.solvePnP_hand(points3D, points2D, camera_matrix, dist_coeffs, frame, draw_frame=True)
+        hand_current_position_camera_frame, rvec, tvec = self.solvePnP_hand(points3D, points2D, camera_matrix, dist_coeffs)
         hand_current_position = self.camera_to_robot_R @ hand_current_position_camera_frame
         #rospy.loginfo(f"Hand position: {hand_current_position}")
 
@@ -284,6 +287,9 @@ class HandMimicControlMode( CartesianControlMode ):
 
             # Store the starting time
             self.start_time = time.time() 
+            
+            # Reset the hand trajectory
+            self.hand_trajectory_2D = []
 
             return partial(self.stop)            
 
@@ -293,6 +299,18 @@ class HandMimicControlMode( CartesianControlMode ):
         # Get current pose of the robot and store it
         robot_pose = self.group_commander.get_current_pose().pose
         robot_position, robot_orientation = self.convert_pose_to_p_q(robot_pose)
+        
+        
+        
+        
+        
+        # Draw the trajectory on the frame
+        X, Y, Z = hand_current_position_camera_frame        
+        pixel_coords = camera_matrix @ np.array([X/Z, Y/Z, 1])        
+        hand_position_pixels = int(pixel_coords[0]), int(pixel_coords[1])
+        self.hand_trajectory_2D.append( hand_position_pixels )
+        rospy.loginfo(self.hand_trajectory_2D)
+        self.draw_path(frame, self.hand_trajectory_2D, (255,128,0), 3)
 
 
 
@@ -449,7 +467,7 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
 
-    def solvePnP_hand(self, points3D, points2D, camera_matrix, dist_coeffs, frame, draw_frame=True):
+    def solvePnP_hand(self, points3D, points2D, camera_matrix, dist_coeffs):
 
         assert points2D.shape[1] == 2
         assert points3D.shape[0] == points2D.shape[0]
@@ -465,6 +483,29 @@ class HandMimicControlMode( CartesianControlMode ):
         wrist_pos = tvec.reshape((-1)) # + R @ points3D[4].reshape((-1)) 
 
         return wrist_pos.reshape((-1)), rvec, tvec#, wrist_oriientation
+    
+    
+    def draw_path(self, frame, points, color, thickness):
+        """
+        Draws a path on the given frame connecting the provided points.
+        
+        :param frame: OpenCV image (numpy array)
+        :param points: List of (x, y) tuples representing the path
+        :param color: Tuple (B, G, R) representing the color of the path
+        :param thickness: Thickness of the path lines
+        :return: Modified frame with the path drawn
+        """
+        if len(points) < 2:
+            return frame  # Not enough points to draw a path
+        
+        
+        for i in range(len(points) - 1):
+            p1 = points[i]
+            p2 = points[i+1]
+            rospy.loginfo(f"[{p1}, {p2}]")
+            cv2.line(frame, p1, p2, color, thickness)
+        
+        return frame
     
 
     def get_plane_normal(self, p1, p2, p3):
