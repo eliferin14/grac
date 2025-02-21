@@ -182,10 +182,12 @@ def main():
         
         # Check if plotting node is listening
         if plot_publisher.get_num_connections() > 0:
+
+            # NOTE this piece of code was originally developed to plot the left and right hand, but has been modified to plot the two sets of landmarks fo the right hand
         
             # Convert world coordinates to a list of ROS points
-            rhwl = convert_matrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
-            lhwl = convert_matrix_to_ROSpoints(detector.left_hand_world_landmarks_matrix)
+            rhwl = convert_matrix_to_ROSpoints(detector.right_hand_world_landmarks_matrix)
+            lhwl = convert_matrix_to_ROSpoints(detector.right_hand_landmarks_matrix)
             pwl = convert_matrix_to_ROSpoints(detector.pose_world_landmarks_matrix)
             
             # Publish on the plot topic

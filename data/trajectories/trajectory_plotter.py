@@ -31,8 +31,12 @@ robot_raw_trajectory = trajectories_tensor[:,2,:]
 robot_smoothed_trajectory = trajectories_tensor[:,3,:]
 hand_delta_points = trajectories_tensor[:,4,:]
 robot_delta_points = trajectories_tensor[:,5,:]
-
 robot_measured_trajectory = trajectories_tensor[:,-1,:]
+
+if False:
+    R_robot_to_camera = np.linalg.inv(np.vstack([ [0,0,-1], [-1,0,0], [0,-1,0] ]))
+    hand_raw_trajectory = (R_robot_to_camera @ hand_raw_trajectory.T).T
+    hand_filtered_trajectory = (R_robot_to_camera @ hand_filtered_trajectory.T).T
 
 def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors, markers, draw_arrows=True):
     """

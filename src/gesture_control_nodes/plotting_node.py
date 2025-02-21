@@ -19,8 +19,19 @@ right_ax = fig.add_subplot(133, projection='3d')
 
 # Set titles and stuff
 pose_ax.set_title("Pose")
-right_ax.set_title("Right hand")
-left_ax.set_title("Left hand")
+left_ax.set_title("Normalized image coordinates")
+right_ax.set_title("Real world coordinates")
+
+left_ax.set_xlabel('X')
+left_ax.set_ylabel('Z')
+left_ax.set_zlabel('Y')
+
+right_ax.set_xlabel('X')
+right_ax.set_ylabel('Z')
+right_ax.set_zlabel('Y')
+
+left_ax.scatter([0], [0], [0], c='red', s=100)  # Red point, size 100
+right_ax.scatter([0], [0], [0], c='red', s=50)  # Red point, size 100
 
 # Initialize data as empty lists
 rhl_x, rhl_y, rhl_z = [], [], []
@@ -29,7 +40,7 @@ pl_x, pl_y, pl_z = [], [], []
 
 # Initialize artist for the plot(s)
 pl_scatter = pose_ax.scatter(pl_x, pl_y, pl_z, c='g')
-lhl_scatter = left_ax.scatter(lhl_x, lhl_y, lhl_z, c='r')
+lhl_scatter = left_ax.scatter(lhl_x, lhl_y, lhl_z, c='b')
 rhl_scatter = right_ax.scatter(rhl_x, rhl_y, rhl_z, c='b')
 
 pose_line_collection = Line3DCollection([], colors='gray')
@@ -62,15 +73,12 @@ def update_data_callback(msg):
     # Extract data
     rhl_ros = msg.rh_landmarks
     lhl_ros = msg.lh_landmarks
-    pl_ros = msg.pose_landmarks
     
     # Convert points array to numpy matrices
     rhl_x, rhl_y, rhl_z = convert_ROSpoints_to_XYZarrays(rhl_ros)
     lhl_x, lhl_y, lhl_z = convert_ROSpoints_to_XYZarrays(lhl_ros)
-    pl_x, pl_y, pl_z = convert_ROSpoints_to_XYZarrays(pl_ros)
     
     # Rotate points by 90deg about x
-    pl_x, pl_y, pl_z = rot_x_90(pl_x, pl_y, pl_z)
     rhl_x, rhl_y, rhl_z = rot_x_90(rhl_x, rhl_y, rhl_z)
     lhl_x, lhl_y, lhl_z = rot_x_90(lhl_x, lhl_y, lhl_z)
     
@@ -157,16 +165,6 @@ def rot_x_90(x,y,z):
 def update_plot_callback(f):
     
     global rhl_x, rhl_y, rhl_z, lhl_x, lhl_y, lhl_z, pl_x, pl_y, pl_z
-    
-    # Set the new data in the pose plot
-    px, py, pz, plines = update_scatter_and_lines(pl_x, pl_y, pl_z, pose_connection_list, pose_landmarks_blacklist)
-    pl_scatter._offsets3d = (px, py, pz)
-    pose_line_collection.set_segments(plines)
-    # Set limits
-    x_min, y_min, z_min, x_max, y_max, z_max = calculate_centered_bounding_cube(px, py, pz)
-    pose_ax.set_xlim([x_min, x_max])
-    pose_ax.set_ylim([y_min, y_max])
-    pose_ax.set_zlim([z_min, z_max])
     
     
     # Set the new data in the hands plot

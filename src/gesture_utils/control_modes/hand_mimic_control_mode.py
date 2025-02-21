@@ -207,7 +207,7 @@ class HandMimicControlMode( CartesianControlMode ):
 
         self.trajectories_publisher = rospy.Publisher('hand_mimic_trajectories', trajectories, queue_size=10)
 
-        self.time_step = 0.05
+        self.time_step = 0.1
         
         
         
@@ -256,6 +256,7 @@ class HandMimicControlMode( CartesianControlMode ):
 
 
 
+        # Draw the three axes of the reference frame of the hand in the live feed
         """ # Define a reference frame
         axis_length = 0.05
         rf_points = np.float32([palm_frame_R_in_hand_frame[:,0], palm_frame_R_in_hand_frame[:,1], palm_frame_R_in_hand_frame[:,2], [0,0,0]]).reshape(-1, 3) * axis_length
@@ -305,12 +306,12 @@ class HandMimicControlMode( CartesianControlMode ):
         
         
         # Draw the trajectory on the frame
-        X, Y, Z = hand_current_position_camera_frame        
+        """ X, Y, Z = hand_current_position_camera_frame        
         pixel_coords = camera_matrix @ np.array([X/Z, Y/Z, 1])        
         hand_position_pixels = int(pixel_coords[0]), int(pixel_coords[1])
         self.hand_trajectory_2D.append( hand_position_pixels )
         rospy.loginfo(self.hand_trajectory_2D)
-        self.draw_path(frame, self.hand_trajectory_2D, (255,128,0), 3)
+        self.draw_path(frame, self.hand_trajectory_2D, (0,0,255), 3) """
 
 
 
