@@ -11,7 +11,7 @@ parser.add_argument('-lf', '--live_filename', type=str)
 args = parser.parse_args()
 print(args)
 
-def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors, markers, draw_arrows=True):
+def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors, markers, linestyles, draw_arrows=True):
     """
     Plots multiple 3D trajectories on the given ax and calculates the smallest bounding cube.
     
@@ -20,9 +20,9 @@ def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors
     - trajectories: list or array of shape (num_trajectories, num_points, 3)
     """
     # Plot all trajectories
-    for traj, label, color, marker in zip(trajectories,labels,colors, markers):
+    for traj, label, color, marker, linestyle in zip(trajectories,labels,colors, markers, linestyles):
         x, y, z = traj[:,0], traj[:,1], traj[:,2]
-        ax.plot(x, y, z, label=label, color=color, marker=marker)
+        ax.plot(x, y, z, label=label, color=color, marker=marker, linestyle=linestyle)
 
         if draw_arrows:
             u, v, w = np.diff(x), np.diff(y), np.diff(z)
@@ -103,15 +103,17 @@ plot_trajectories_with_bounding_cube(ax_hand,
                                      title="Hand position",
                                      labels=['Raw', 'Filtered'],
                                      colors=['k','r'],
-                                     markers=['', '']
+                                     markers=['', ''],
+                                     linestyles=['-', '-']
                                      )
 
 plot_trajectories_with_bounding_cube(ax_robot, 
                                      trajectories=[sim_robot_target_traj, sim_robot_measured_traj, live_robot_measured_traj],
                                      title="Robot position",
-                                     labels=['Target', 'Simulated', 'Live'],
-                                     colors=['k', 'b', 'g'],
-                                     markers=['x', '', '']
+                                     labels=['Target', 'Simulated', 'Real'],
+                                     colors=['k', 'b', 'r'],
+                                     markers=['', '', ''],
+                                     linestyles=[':', '-', '-']
                                      )
 
 

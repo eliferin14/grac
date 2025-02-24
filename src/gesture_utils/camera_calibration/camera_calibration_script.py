@@ -4,7 +4,7 @@ import os
 import glob
 
 # Chessboard settings
-CHESSBOARD_SIZE = (7,9)  # Adjust based on your pattern
+CHESSBOARD_SIZE = (9,7)  # Adjust based on your pattern
 SQUARE_SIZE = 0.02  # Set the actual size of a square in your units (e.g., cm)
 
 # Termination criteria for corner refinement
@@ -43,19 +43,25 @@ if ret:
     np.savez("camera_calibration_results.npz", camera_matrix=camera_matrix, dist_coeffs=dist_coeffs)
     print("Camera calibration successful. Data saved to camera_calibration_results.npz")
     print(f"{camera_matrix}")
+    print(f"{dist_coeffs}")
     
     # Load one of the calibration images
-    sample_img = cv2.imread(images[0])
+    sample_img = cv2.imread(image_folder+"/image_0023.jpg")
     sample_gray = cv2.cvtColor(sample_img, cv2.COLOR_BGR2GRAY)
     
     # Undistort the image
     undistorted_img = cv2.undistort(sample_img, camera_matrix, dist_coeffs)
+    ref_frame_image = sample_img.copy()
     
     ret, corners = cv2.findChessboardCorners(sample_gray, CHESSBOARD_SIZE, None)
     if ret:
+        # Refine corners 
         corners2 = cv2.cornerSubPix(sample_gray, corners, (11, 11), (-1, -1), criteria)
         
-        # Define reference frame axes (2 cm long)
+        # Draw corners
+        cv2.drawChessboardCorners(undistorted_img, CHESSBOARD_SIZE, corners2, ret)
+        
+        # Define reference frame axes 
         axis = np.float32([[0.04, 0, 0], [0, 0.04, 0], [0, 0, 0.04]]).reshape(-1, 3)
         
         # Solve PnP to get the pose
@@ -68,12 +74,12 @@ if ret:
         imgpts = imgpts.astype(int)
         
         # Draw reference frame on undistorted image
-        undistorted_img = cv2.line(undistorted_img, origin, tuple(imgpts[0].ravel()), (0, 0, 255), 3)  # X-axis (red)
-        undistorted_img = cv2.line(undistorted_img, origin, tuple(imgpts[1].ravel()), (0, 255, 0), 3)  # Y-axis (green)
-        undistorted_img = cv2.line(undistorted_img, origin, tuple(imgpts[2].ravel()), (255, 0, 0), 3)  # Z-axis (blue)
+        ref_frame_image = cv2.line(ref_frame_image, origin, tuple(imgpts[0].ravel()), (0, 0, 255), 3)  # X-axis (red)
+        ref_frame_image = cv2.line(ref_frame_image, origin, tuple(imgpts[1].ravel()), (0, 255, 0), 3)  # Y-axis (green)
+        ref_frame_image = cv2.line(ref_frame_image, origin, tuple(imgpts[2].ravel()), (255, 0, 0), 3)  # Z-axis (blue)
         
         # Concatenate original and undistorted images side by side
-        comparison_img = np.hstack((sample_img, undistorted_img))
+        comparison_img = np.hstack((sample_img, undistorted_img, ref_frame_image))
         
         # Show the images
         cv2.imshow('Original vs Undistorted with Reference Frame', comparison_img)

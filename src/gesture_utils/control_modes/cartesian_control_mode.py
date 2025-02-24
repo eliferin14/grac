@@ -179,6 +179,9 @@ class CartesianControlMode(ActionBasedControlMode):
                                                self.orientation_matrix @ cartesian_velocity_limits_base_frame[:3],  # R*v_max
                                                self.orientation_matrix @ cartesian_velocity_limits_base_frame[3:6]  # R*omega_max
                                                ]) 
+        cartesian_velocity_limits = self.get_velocity_limits(cartesian_velocity_limits_base_frame, self.orientation_matrix)
+        rospy.loginfo(f"Limits on base frame motion: {cartesian_velocity_limits_base_frame}")
+        rospy.loginfo(f"Limits on end effector motion: {cartesian_velocity_limits}")
         assert cartesian_velocity_limits.shape == (6,)
         
         # Calculate the maximum step for each DoF in the selected frame
@@ -254,6 +257,46 @@ class CartesianControlMode(ActionBasedControlMode):
         action_request = partial(self.client.send_goal, goal=goal)   
 
         return action_request, ["ik", "jacobian"], [ik_exec_time, jacobian_exec_time]
+    
+    
+    def get_velocity_limits(self, max_velocities, R):
+        
+        v_max = max_velocities[:3]
+        n_v_max = v_max / np.linalg.norm(v_max)
+        w_max = max_velocities[3:6]
+        n_w_max = w_max / np.linalg.norm(w_max)
+        
+        max_velocities_along_axes = np.zeros(max_velocities.shape)
+        
+        # The columns of R defines the coordinates of the selected reference frame in the base reference frame
+        for i, axis in enumerate(R.T):
+            
+            # Calculate the ratios of the component of the direction vector and the components of the max velocity vector
+            # The direction is already normalized
+            ratios = axis / n_v_max
+            
+            # Find the maximum ratio: the corresponding component will be the limiting factor
+            limit_index = np.argmax(ratios)
+            
+            # Calculate the highest possible scaling from the limiting component
+            scaling = v_max[limit_index] / axis[limit_index]
+            
+            # Calculate the maximum velocity along the axis (we only need the norm)
+            v_max_along_axis = np.linalg.norm(scaling * axis)
+            
+            # Save the result
+            max_velocities_along_axes[i] = v_max_along_axis
+            
+            
+            # Repeat for angular velocities
+            ratios = axis / n_w_max
+            limit_index = np.argmax(ratios)
+            scaling = w_max[limit_index] / axis[limit_index]
+            w_max_along_axis = np.linalg.norm(scaling * axis)
+            max_velocities_along_axes[i+3] = w_max_along_axis
+            
+        return max_velocities_along_axes
+            
 
 
 
