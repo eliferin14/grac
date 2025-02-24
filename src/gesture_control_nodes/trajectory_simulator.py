@@ -179,7 +179,7 @@ fig, (ax_hand, ax_robot) = plt.subplots(1, 2, figsize=(12, 6), subplot_kw={'proj
 plot_trajectories_with_bounding_cube(ax_hand, 
                                      trajectories=[hand_raw_trajectory, hand_filtered_trajectory],
                                      title="Hand position",
-                                     labels=['Raw', 'Filtered'],
+                                     labels=['Unfiltered', 'Filtered'],
                                      colors=['k','r'],
                                      markers=['', '']
                                      )
@@ -187,9 +187,9 @@ plot_trajectories_with_bounding_cube(ax_hand,
 plot_trajectories_with_bounding_cube(ax_robot, 
                                      trajectories=[robot_raw_trajectory, robot_measured_trajectory],
                                      title="Robot position",
-                                     labels=['Raw', 'Measured'],
+                                     labels=['Target', 'Measured'],
                                      colors=['k', 'b'],
-                                     markers=['x', '']
+                                     markers=['', '']
                                      )
 
 

@@ -10,33 +10,20 @@ args = parser.parse_args()
 print(args)
 
 loaded_data = np.load(args.filename)
-trajectories_tensor = loaded_data['trajectories_tensor']
+trajectories_tensor = loaded_data['trajectory_tensor']
 print(f"Loaded tensor with shape {trajectories_tensor.shape}")
-
-# Define the parameter t
-t = np.linspace(0, 4 * np.pi, 100)  # t goes from 0 to 4*pi
-
-# Parametric equations for the spiral
-x = np.cos(t)
-y = np.sin(t)
-z = t  # You can scale this if you want to change the height progression
-test_trajectory = np.array([x,y,z])
-print(test_trajectory.shape)
 
 
 # Extract trajectories
 hand_raw_trajectory = trajectories_tensor[:,0,:]
 hand_filtered_trajectory = trajectories_tensor[:,1,:]
-robot_raw_trajectory = trajectories_tensor[:,2,:]
-robot_smoothed_trajectory = trajectories_tensor[:,3,:]
-hand_delta_points = trajectories_tensor[:,4,:]
-robot_delta_points = trajectories_tensor[:,5,:]
-robot_measured_trajectory = trajectories_tensor[:,-1,:]
+robot_target_trajectory = trajectories_tensor[:,2,:]
+robot_measured_trajectory = trajectories_tensor[:,3,:]
 
-if False:
-    R_robot_to_camera = np.linalg.inv(np.vstack([ [0,0,-1], [-1,0,0], [0,-1,0] ]))
-    hand_raw_trajectory = (R_robot_to_camera @ hand_raw_trajectory.T).T
-    hand_filtered_trajectory = (R_robot_to_camera @ hand_filtered_trajectory.T).T
+robot_target_trajectory -= robot_target_trajectory[0]
+robot_measured_trajectory -= robot_measured_trajectory[0]
+
+s1, s2, s3, s4 = 0.1, 0.5, 1, 3
 
 def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors, markers, draw_arrows=True):
     """
@@ -92,87 +79,24 @@ def plot_trajectories_with_bounding_cube(ax, trajectories, title, labels, colors
     ax.legend()
 
 
-
-
 # Plot the trajectory
-fig, (ax_hand, ax_robot, ax_delta) = plt.subplots(1, 3, figsize=(18, 6), subplot_kw={'projection': '3d'})
-
-
-
-
-# Plot the trajectory in 3D space
-""" ax_hand.plot(*hand_raw_trajectory, label=f"Raw", marker='x')
-ax_hand.plot(*hand_filtered_trajectory, label=f"Filtered")
-#ax_hand.plot(*test_trajectory, label=f"Random")
-ax_hand.set_xlabel('X')
-ax_hand.set_ylabel('Y')
-ax_hand.set_zlabel('Z')
-ax_hand.set_title(f"Hand trajectory")
-ax_hand.legend() 
-
-# Plot the trajectory in 3D space
-ax_robot.plot(*robot_raw_trajectory, label=f"Raw", marker='o')
-ax_robot.plot(*robot_smoothed_trajectory, label=f"Smoothed")
-ax_robot.plot(*robot_measured_trajectory, label=f"Measured", marker='x')
-ax_robot.set_xlabel('X')
-ax_robot.set_ylabel('Y')
-ax_robot.set_zlabel('Z')
-ax_robot.set_title(f"Robot trajectory")
-ax_robot.legend()
-
-# Plot the trajectory in 3D space
-ax_delta.plot(*hand_delta_points, label=f"Hand", marker='o')
-ax_delta.plot(*robot_delta_points, label=f"Robot", marker='x')
-ax_delta.set_xlabel('X')
-ax_delta.set_ylabel('Y')
-ax_delta.set_zlabel('Z')
-ax_delta.set_title(f"Delta vectors")
-ax_delta.legend()"""
-
-
+fig, (ax_hand, ax_robot) = plt.subplots(1, 2, figsize=(12, 6), subplot_kw={'projection': '3d'})
 
 plot_trajectories_with_bounding_cube(ax_hand, 
                                      trajectories=[hand_raw_trajectory, hand_filtered_trajectory],
                                      title="Hand position",
-                                     labels=['Raw', 'Filtered'],
+                                     labels=['Unfiltered', 'Filtered'],
                                      colors=['k','r'],
                                      markers=['', '']
                                      )
 
 plot_trajectories_with_bounding_cube(ax_robot, 
-                                     trajectories=[robot_raw_trajectory, robot_smoothed_trajectory, robot_measured_trajectory],
-                                     title="Robot position",
-                                     labels=['Raw', 'Smoothed', 'Measured'],
-                                     colors=['k','g', 'b'],
-                                     markers=['x', '', '']
+                                     trajectories=[robot_target_trajectory*s1, robot_target_trajectory*s2, robot_target_trajectory*s3, robot_target_trajectory*s4],
+                                     title="Robot target position",
+                                     labels=['scaling = 0.1', 'scaling = 0.5', 'scaling = 1', 'scaling = 3'],
+                                     colors=['skyblue', 'royalblue', 'blue', 'navy'],
+                                     markers=['', '', '', '']
                                      )
-
-""" plot_trajectories_with_bounding_cube(ax_robot, 
-                                     trajectories=[robot_raw_trajectory, robot_smoothed_trajectory],
-                                     title="Robot position",
-                                     labels=['Raw', 'Smoothed'],
-                                     colors=['k','g'],
-                                     markers=['x', '']
-                                     ) """
-
-plot_trajectories_with_bounding_cube(ax_delta, 
-                                     trajectories=[hand_delta_points, robot_delta_points],
-                                     title="Displacement vectors",
-                                     labels=['Hand', 'Robot'],
-                                     colors=['r','g'],
-                                     markers=['x', ''],
-                                     draw_arrows=False
-                                     )
-
-
-
-
-
-
-
-
-
-
 
 
 
